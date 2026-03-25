@@ -1,12 +1,17 @@
 /**
- * In-memory data store — mirrors the frontend mock data.
- * In production this would be replaced with a real DB (PostgreSQL / MongoDB).
+ * File-persisted data store.
+ * Reads from db/data.json on startup; writes back on every mutation.
+ * Falls back to seed data if the file doesn't exist yet.
  */
+const fs   = require('fs');
+const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
 
-// ─── USERS ────────────────────────────────────────────────────────────────────
-const users = [
+const DATA_FILE = path.join(__dirname, 'data.json');
+
+// ─── SEED DATA (used only when no data.json exists) ──────────────────────────
+const seedUsers = [
   {
     id: 'u1',
     name: 'James Kamau',
@@ -55,8 +60,7 @@ const users = [
   },
 ];
 
-// ─── VENDORS ──────────────────────────────────────────────────────────────────
-const vendors = [
+const seedVendors = [
   {
     id: 'v1',
     name: 'SoundWave Events',
@@ -65,7 +69,7 @@ const vendors = [
     password: bcrypt.hashSync('vendor123', 10),
     phone: '0722100200',
     category: 'Music & Festivals',
-    description: 'East Africa\'s leading music event organiser.',
+    description: "East Africa's leading music event organiser.",
     logo: null,
     totalRevenue: 9550000,
     totalEvents: 12,
@@ -116,7 +120,7 @@ const vendors = [
     password: bcrypt.hashSync('pass123', 10),
     phone: '0711400500',
     category: 'Tech & Business',
-    description: 'Africa\'s premier tech conference organiser.',
+    description: "Africa's premier tech conference organiser.",
     logo: null,
     totalRevenue: 15300000,
     totalEvents: 4,
@@ -127,8 +131,7 @@ const vendors = [
   },
 ];
 
-// ─── EVENTS ───────────────────────────────────────────────────────────────────
-const events = [
+const seedEvents = [
   {
     id: 'e1',
     title: 'Neon Pulse Music Festival',
@@ -241,84 +244,127 @@ const events = [
   },
 ];
 
-// ─── PAYMENTS ─────────────────────────────────────────────────────────────────
-// Keyed by CheckoutRequestID from M-Pesa
-const payments = {};
+// ─── LOAD OR INITIALISE ───────────────────────────────────────────────────────
+let _data;
+try {
+  if (fs.existsSync(DATA_FILE)) {
+    _data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    console.log('[DB] Loaded data.json');
+  }
+} catch (e) {
+  console.error('[DB] Failed to load data.json, using seed data:', e.message);
+}
 
-// ─── BOOKINGS ─────────────────────────────────────────────────────────────────
-const bookings = [];
+if (!_data) {
+  _data = {
+    users: seedUsers,
+    vendors: seedVendors,
+    events: seedEvents,
+    payments: {},
+    bookings: [],
+  };
+}
+
+// Live references — mutations to these are reflected in _data
+const users    = _data.users;
+const vendors  = _data.vendors;
+const events   = _data.events;
+const payments = _data.payments;   // object keyed by checkoutRequestId
+const bookings = _data.bookings;
+
+// ─── PERSIST ─────────────────────────────────────────────────────────────────
+function save() {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(_data, null, 2));
+  } catch (e) {
+    console.error('[DB] Failed to write data.json:', e.message);
+  }
+}
+
+// Persist seed data on first run
+if (!fs.existsSync(DATA_FILE)) save();
 
 // ─── STORE API ────────────────────────────────────────────────────────────────
 const db = {
   // Users
-  getUsers: () => users,
-  getUserById: (id) => users.find((u) => u.id === id),
-  getUserByEmail: (email) => users.find((u) => u.email.toLowerCase() === email.toLowerCase()),
+  getUsers:        ()     => users,
+  getUserById:     (id)   => users.find((u) => u.id === id),
+  getUserByEmail:  (email)=> users.find((u) => u.email.toLowerCase() === email.toLowerCase()),
   createUser: (data) => {
     const user = { id: uuidv4(), joinedAt: new Date().toISOString().split('T')[0], totalSpent: 0, ticketsBought: 0, status: 'active', ...data };
     users.push(user);
+    save();
     return user;
   },
   updateUser: (id, updates) => {
     const idx = users.findIndex((u) => u.id === id);
     if (idx === -1) return null;
     users[idx] = { ...users[idx], ...updates };
+    save();
     return users[idx];
   },
 
   // Vendors
-  getVendors: () => vendors,
-  getVendorById: (id) => vendors.find((v) => v.id === id),
-  getVendorByEmail: (email) => vendors.find((v) => v.email.toLowerCase() === email.toLowerCase()),
+  getVendors:       ()     => vendors,
+  getVendorById:    (id)   => vendors.find((v) => v.id === id),
+  getVendorByEmail: (email)=> vendors.find((v) => v.email.toLowerCase() === email.toLowerCase()),
   createVendor: (data) => {
     const vendor = { id: uuidv4(), joinedAt: new Date().toISOString().split('T')[0], totalRevenue: 0, totalEvents: 0, status: 'active', commission: 5, verified: false, ...data };
     vendors.push(vendor);
+    save();
     return vendor;
   },
   updateVendor: (id, updates) => {
     const idx = vendors.findIndex((v) => v.id === id);
     if (idx === -1) return null;
     vendors[idx] = { ...vendors[idx], ...updates };
+    save();
     return vendors[idx];
   },
   deleteVendor: (id) => {
     const idx = vendors.findIndex((v) => v.id === id);
     if (idx === -1) return false;
     vendors.splice(idx, 1);
+    save();
     return true;
   },
 
   // Events
-  getEvents: () => events,
-  getEventById: (id) => events.find((e) => e.id === id),
-  getEventsByVendor: (vendorId) => events.filter((e) => e.vendorId === vendorId),
+  getEvents:          ()         => events,
+  getEventById:       (id)       => events.find((e) => e.id === id),
+  getEventsByVendor:  (vendorId) => events.filter((e) => e.vendorId === vendorId),
   createEvent: (data) => {
     const event = { id: uuidv4(), soldTickets: 0, createdAt: new Date().toISOString().split('T')[0], status: 'on_sale', featured: false, ...data };
     events.push(event);
+    save();
     return event;
   },
   updateEvent: (id, updates) => {
     const idx = events.findIndex((e) => e.id === id);
     if (idx === -1) return null;
     events[idx] = { ...events[idx], ...updates };
+    save();
     return events[idx];
   },
   deleteEvent: (id) => {
     const idx = events.findIndex((e) => e.id === id);
     if (idx === -1) return false;
     events.splice(idx, 1);
+    save();
     return true;
   },
 
   // Payments (keyed by CheckoutRequestID)
   savePayment: (checkoutRequestId, data) => {
     payments[checkoutRequestId] = { ...data, createdAt: new Date().toISOString() };
+    save();
   },
-  getPayment: (checkoutRequestId) => payments[checkoutRequestId],
-  updatePayment: (checkoutRequestId, updates) => {
-    if (!payments[checkoutRequestId]) return null;
-    payments[checkoutRequestId] = { ...payments[checkoutRequestId], ...updates, updatedAt: new Date().toISOString() };
-    return payments[checkoutRequestId];
+  getPayment:    (id)  => payments[id],
+  updatePayment: (id, updates) => {
+    if (!payments[id]) return null;
+    payments[id] = { ...payments[id], ...updates, updatedAt: new Date().toISOString() };
+    save();
+    return payments[id];
   },
   getAllPayments: () => Object.values(payments),
 
@@ -326,10 +372,11 @@ const db = {
   createBooking: (data) => {
     const booking = { id: uuidv4(), createdAt: new Date().toISOString(), ...data };
     bookings.push(booking);
+    save();
     return booking;
   },
-  getBookings: () => bookings,
-  getBookingsByUser: (userId) => bookings.filter((b) => b.userId === userId),
+  getBookings:        ()       => bookings,
+  getBookingsByUser:  (userId) => bookings.filter((b) => b.userId === userId),
 };
 
 module.exports = db;
