@@ -30,6 +30,8 @@ export default function HeroSection() {
 
   const event = featured[current];
 
+  if (!featured.length || !event) return null;
+
   return (
     <section className="relative w-full h-[580px] md:h-[640px] overflow-hidden">
       {/* Background images */}
