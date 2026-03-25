@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { TrendingUp, Ticket, CalendarDays, DollarSign, Plus, ArrowUpRight, Users } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
@@ -5,9 +6,11 @@ import useEventStore from '../../store/eventStore';
 
 export default function VendorDashboard() {
   const { user } = useAuthStore();
-  const { events } = useEventStore();
+  const { events, fetchEvents } = useEventStore();
 
-  const vendorId = user?.vendorId || 'v1';
+  useEffect(() => { fetchEvents(); }, []);
+
+  const vendorId = user?.id || user?.vendorId;
   const myEvents = events.filter((e) => e.vendorId === vendorId);
   const totalRevenue = myEvents.reduce((sum, e) => sum + e.soldTickets * e.price, 0);
   const totalSold = myEvents.reduce((sum, e) => sum + e.soldTickets, 0);
@@ -15,7 +18,7 @@ export default function VendorDashboard() {
   const stats = [
     {
       label: 'Total Revenue',
-      value: `R${(totalRevenue / 1000).toFixed(1)}K`,
+      value: `Ksh ${(totalRevenue / 1000).toFixed(1)}K`,
       change: '+18%',
       icon: DollarSign,
       bg: 'bg-green-50',
@@ -126,7 +129,7 @@ export default function VendorDashboard() {
                         </div>
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-600 hidden md:table-cell">
-                        {new Date(event.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {new Date(event.date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
                       <td className="px-4 py-4">
                         <div>
@@ -140,7 +143,7 @@ export default function VendorDashboard() {
                         </div>
                       </td>
                       <td className="px-4 py-4 text-sm font-bold text-gray-900 hidden sm:table-cell">
-                        R{(event.soldTickets * event.price).toLocaleString()}
+                        Ksh {(event.soldTickets * event.price).toLocaleString()}
                       </td>
                       <td className="px-4 py-4">
                         <span className={`badge ${

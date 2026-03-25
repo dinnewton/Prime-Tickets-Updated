@@ -23,9 +23,13 @@ export default function Register() {
     }
     setError('');
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 700));
-    register({ name: form.name, email: form.email, phone: form.phone });
-    navigate('/');
+    const result = await register({ name: form.name, email: form.email, phone: form.phone, password: form.password });
+    setLoading(false);
+    if (result.success) {
+      navigate('/');
+    } else {
+      setError(result.error || 'Registration failed. Please try again.');
+    }
   };
 
   const passwordStrength = () => {

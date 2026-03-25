@@ -5,7 +5,7 @@ import useAuthStore from '../../store/authStore';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
-  const { login } = useAuthStore();
+  const { adminLogin } = useAuthStore();
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
@@ -16,7 +16,7 @@ export default function AdminLogin() {
     setError('');
     setLoading(true);
     await new Promise((r) => setTimeout(r, 700));
-    const result = login(form.email, form.password);
+    const result = await adminLogin(form.email, form.password);
     setLoading(false);
     if (result.success && result.role === 'admin') {
       navigate('/admin');

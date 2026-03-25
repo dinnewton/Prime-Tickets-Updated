@@ -1,59 +1,47 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   TrendingUp, Ticket, Building2, Users, DollarSign, CalendarDays,
-  ArrowUpRight, Percent, Crown, AlertTriangle, BarChart3,
+  ArrowUpRight, Percent, Crown, AlertTriangle, BarChart3, Loader2,
 } from 'lucide-react';
-import { events } from '../../data/events';
-import { vendors } from '../../data/vendors';
-import { users } from '../../data/users';
+import { adminApi } from '../../services/api';
 
 const COMMISSION_RATE = 0.05;
-
-// Compute analytics
-const totalGrossRevenue = events.reduce((sum, e) => sum + e.soldTickets * e.price, 0);
-const totalCommission = Math.round(totalGrossRevenue * COMMISSION_RATE);
-const totalTicketsSold = events.reduce((sum, e) => sum + e.soldTickets, 0);
-
-const topEvents = [...events]
-  .map((e) => ({
-    ...e,
-    revenue: e.soldTickets * e.price,
-    commission: Math.round(e.soldTickets * e.price * COMMISSION_RATE),
-    soldPct: Math.round((e.soldTickets / e.totalTickets) * 100),
-  }))
-  .sort((a, b) => b.revenue - a.revenue);
-
-// Simulated monthly revenue data (last 6 months)
 const months = ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
-const monthlyRevenue = [1850000, 2340000, 3100000, 2700000, 3850000, totalGrossRevenue];
-const maxMonthly = Math.max(...monthlyRevenue);
-
-const categoryRevenue = events.reduce((acc, e) => {
-  acc[e.category] = (acc[e.category] || 0) + e.soldTickets * e.price;
-  return acc;
-}, {});
-const topCategories = Object.entries(categoryRevenue)
-  .sort(([, a], [, b]) => b - a)
-  .slice(0, 5);
-const maxCategoryRevenue = Math.max(...topCategories.map(([, v]) => v));
 
 function formatKsh(val) {
+  if (!val) return 'Ksh 0';
   if (val >= 1_000_000) return `Ksh ${(val / 1_000_000).toFixed(1)}M`;
   if (val >= 1_000) return `Ksh ${(val / 1_000).toFixed(0)}K`;
   return `Ksh ${val}`;
 }
 
-const getStatusBadge = (status) => {
-  const map = {
-    on_sale: 'badge-green',
-    almost_sold_out: 'badge-red',
-    sold_out: 'bg-gray-100 text-gray-500 badge',
-  };
-  return map[status] || 'badge-green';
-};
-
 export default function AdminDashboard() {
-  const pendingVendors = vendors.filter((v) => v.status === 'pending');
+  const [apiData, setApiData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    adminApi.dashboard().then(setApiData).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-primary-600 animate-spin" /></div>;
+  }
+
+  if (!apiData) {
+    return <div className="p-6 text-center text-red-500">Could not load dashboard. Ensure the API server is running.</div>;
+  }
+
+  const { summary, topEvents = [], byCategory = {}, vendorPerformance = [] } = apiData;
+  const topCategories = Object.entries(byCategory).sort(([, a], [, b]) => b - a).slice(0, 5);
+  const maxCategoryRevenue = Math.max(...topCategories.map(([, v]) => v), 1);
+  const monthlyRevenue = months.map((_, i) => summary.totalRevenue * (0.5 + i * 0.1));
+  monthlyRevenue[5] = summary.totalRevenue;
+  const maxMonthly = Math.max(...monthlyRevenue, 1);
+  const totalGrossRevenue = summary.totalRevenue;
+  const totalCommission = summary.companyEarnings;
+  const totalTicketsSold = summary.totalTicketsSold || 0;
+  const pendingVendors = vendorPerformance.filter((v) => v.status === 'pending');
 
   const stats = [
     {
@@ -88,7 +76,7 @@ export default function AdminDashboard() {
     },
     {
       label: 'Active Vendors',
-      value: vendors.filter((v) => v.status === 'active').length,
+      value: summary.activeVendors,
       sub: `${pendingVendors.length} pending review`,
       change: pendingVendors.length > 0 ? `${pendingVendors.length} pending` : 'All clear',
       icon: Building2,
@@ -245,23 +233,22 @@ export default function AdminDashboard() {
                 }`}>
                   {i + 1}
                 </div>
-                <img src={event.image} alt={event.title} className="w-11 h-11 rounded-xl object-cover shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-gray-900 text-sm line-clamp-1">{event.title}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className={getStatusBadge(event.status)}>{event.status.replace('_', ' ')}</span>
+                    <span className="text-xs text-gray-500">{event.vendorName}</span>
                     <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden max-w-24">
                       <div
-                        className={`h-full rounded-full ${event.soldPct >= 90 ? 'bg-red-500' : event.soldPct >= 70 ? 'bg-amber-500' : 'bg-primary-500'}`}
-                        style={{ width: `${event.soldPct}%` }}
+                        className={`h-full rounded-full ${event.percentSold >= 90 ? 'bg-red-500' : event.percentSold >= 70 ? 'bg-amber-500' : 'bg-primary-500'}`}
+                        style={{ width: `${event.percentSold}%` }}
                       />
                     </div>
-                    <span className="text-xs text-gray-400">{event.soldPct}%</span>
+                    <span className="text-xs text-gray-400">{event.percentSold}%</span>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
                   <p className="font-black text-gray-900 text-sm">{formatKsh(event.revenue)}</p>
-                  <p className="text-xs text-green-600 font-semibold">+{formatKsh(event.commission)}</p>
+                  <p className="text-xs text-green-600 font-semibold">+{formatKsh(Math.round(event.revenue * COMMISSION_RATE))}</p>
                 </div>
               </div>
             ))}
@@ -288,11 +275,10 @@ export default function AdminDashboard() {
                 {pendingVendors.map((v) => (
                   <div key={v.id} className="p-4 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-primary-100 text-primary-700 font-bold text-sm flex items-center justify-center shrink-0">
-                      {v.avatar}
+                      {v.name?.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-900 text-sm truncate">{v.name}</p>
-                      <p className="text-xs text-gray-500">{v.category}</p>
                     </div>
                     <Link to="/admin/vendors" className="text-xs text-primary-600 font-semibold hover:underline">
                       Review
@@ -308,10 +294,10 @@ export default function AdminDashboard() {
             <h2 className="text-base font-bold text-gray-900 mb-4">Platform Summary</h2>
             <div className="space-y-3">
               {[
-                { label: 'Total Users', value: users.length, icon: Users },
-                { label: 'Total Events', value: events.length, icon: CalendarDays },
-                { label: 'Active Vendors', value: vendors.filter((v) => v.status === 'active').length, icon: Building2 },
-                { label: 'Avg. Commission/Event', value: formatKsh(Math.round(totalCommission / events.length)), icon: DollarSign },
+                { label: 'Total Users', value: summary.totalUsers, icon: Users },
+                { label: 'Total Events', value: summary.totalEvents, icon: CalendarDays },
+                { label: 'Active Vendors', value: summary.activeVendors, icon: Building2 },
+                { label: 'Total Bookings', value: summary.totalBookings, icon: DollarSign },
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                   <div className="flex items-center gap-2 text-sm text-gray-600">

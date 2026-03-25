@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Search, Plus, CheckCircle, XCircle, Trash2, Eye, X, Mail, Phone,
   Pencil, PauseCircle, PlayCircle, TrendingUp, DollarSign, CalendarDays,
-  Building2, AlertTriangle,
+  Building2, AlertTriangle, Loader2,
 } from 'lucide-react';
-import { vendors as initialVendors } from '../../data/vendors';
-import { events } from '../../data/events';
+import { adminApi } from '../../services/api';
 
 const COMMISSION_RATE = 0.05;
 
@@ -20,7 +19,8 @@ const emptyForm = {
 };
 
 export default function AdminVendors() {
-  const [vendors, setVendors] = useState(initialVendors);
+  const [vendors, setVendors] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [viewVendor, setViewVendor] = useState(null);
@@ -31,29 +31,46 @@ export default function AdminVendors() {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [addForm, setAddForm] = useState(emptyForm);
 
+  // Load vendors from API
+  useEffect(() => {
+    adminApi.vendors()
+      .then(setVendors)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
   const filtered = vendors.filter((v) => {
     const matchSearch =
       v.name.toLowerCase().includes(search.toLowerCase()) ||
-      v.ownerName.toLowerCase().includes(search.toLowerCase()) ||
+      (v.ownerName || '').toLowerCase().includes(search.toLowerCase()) ||
       v.email.toLowerCase().includes(search.toLowerCase());
     const matchStatus =
       statusFilter === 'all' ||
-      (statusFilter === 'pending' && v.status === 'pending') ||
-      (statusFilter === 'active' && v.status === 'active' && !v.suspended) ||
-      (statusFilter === 'suspended' && v.suspended);
+      (statusFilter === 'active' && v.status === 'active') ||
+      (statusFilter === 'suspended' && v.status === 'suspended') ||
+      (statusFilter === 'pending' && v.status === 'pending');
     return matchSearch && matchStatus;
   });
 
-  const approve = (id) =>
-    setVendors(vendors.map((v) => (v.id === id ? { ...v, status: 'active', suspended: false } : v)));
+  const approve = async (id) => {
+    await adminApi.setVendorStatus(id, 'active').catch(() => {});
+    setVendors(vendors.map((v) => (v.id === id ? { ...v, status: 'active' } : v)));
+  };
 
-  const reject = (id) =>
-    setVendors(vendors.map((v) => (v.id === id ? { ...v, status: 'rejected' } : v)));
+  const reject = async (id) => {
+    await adminApi.setVendorStatus(id, 'suspended').catch(() => {});
+    setVendors(vendors.map((v) => (v.id === id ? { ...v, status: 'suspended' } : v)));
+  };
 
-  const toggleSuspend = (id) =>
-    setVendors(vendors.map((v) => (v.id === id ? { ...v, suspended: !v.suspended } : v)));
+  const toggleSuspend = async (id) => {
+    const v = vendors.find((x) => x.id === id);
+    const newStatus = v.status === 'suspended' ? 'active' : 'suspended';
+    await adminApi.setVendorStatus(id, newStatus).catch(() => {});
+    setVendors(vendors.map((x) => (x.id === id ? { ...x, status: newStatus } : x)));
+  };
 
-  const remove = (id) => {
+  const remove = async (id) => {
+    await adminApi.deleteVendor(id).catch(() => {});
     setVendors(vendors.filter((v) => v.id !== id));
     setDeleteConfirm(null);
   };
@@ -62,61 +79,55 @@ export default function AdminVendors() {
     setEditVendor(vendor);
     setEditForm({
       name: vendor.name,
-      ownerName: vendor.ownerName,
+      ownerName: vendor.ownerName || '',
       email: vendor.email,
-      phone: vendor.phone,
-      company: vendor.company,
-      category: vendor.category,
-      bio: vendor.bio,
+      phone: vendor.phone || '',
+      company: vendor.name,
+      category: vendor.category || '',
+      bio: vendor.description || '',
       mpesaNumber: vendor.mpesaNumber || '',
     });
     setModalOpen(true);
   };
 
-  const saveEdit = (e) => {
+  const saveEdit = async (e) => {
     e.preventDefault();
+    await adminApi.updateVendor(editVendor.id, { ...editForm, description: editForm.bio }).catch(() => {});
     setVendors(vendors.map((v) => (v.id === editVendor.id ? { ...v, ...editForm } : v)));
     setModalOpen(false);
     setEditVendor(null);
   };
 
-  const saveAdd = (e) => {
+  const saveAdd = async (e) => {
     e.preventDefault();
+    // New vendor via auth register — for now do optimistic add
     const newVendor = {
       ...addForm,
       id: `v${Date.now()}`,
       status: 'active',
-      suspended: false,
-      joinedDate: new Date().toISOString().split('T')[0],
+      joinedAt: new Date().toISOString().split('T')[0],
       totalEvents: 0,
       totalRevenue: 0,
-      commissionPaid: 0,
-      avatar: addForm.ownerName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
+      commission: 5,
     };
     setVendors([...vendors, newVendor]);
     setAddModalOpen(false);
     setAddForm(emptyForm);
   };
 
-  const getVendorEvents = (vendorId) => events.filter((e) => e.vendorId === vendorId);
-  const getVendorRevenue = (vendor) => vendor.totalRevenue;
-  const getVendorCommission = (vendor) => Math.round(getVendorRevenue(vendor) * COMMISSION_RATE);
+  const getVendorCommission = (vendor) => Math.round((vendor.totalRevenue || 0) * COMMISSION_RATE);
 
   const statusBadge = (vendor) => {
-    if (vendor.suspended) return 'bg-orange-100 text-orange-700 badge';
-    const map = { active: 'badge-green', pending: 'badge-amber', rejected: 'badge-red' };
+    const map = { active: 'badge-green', pending: 'badge-amber', rejected: 'badge-red', suspended: 'bg-orange-100 text-orange-700 badge' };
     return map[vendor.status] || 'badge-purple';
   };
 
-  const statusLabel = (vendor) => {
-    if (vendor.suspended) return 'Suspended';
-    return vendor.status.charAt(0).toUpperCase() + vendor.status.slice(1);
-  };
+  const statusLabel = (vendor) => vendor.status.charAt(0).toUpperCase() + vendor.status.slice(1);
 
   // Summary stats
   const totalCommission = vendors.reduce((s, v) => s + getVendorCommission(v), 0);
   const pendingCount = vendors.filter((v) => v.status === 'pending').length;
-  const activeCount = vendors.filter((v) => v.status === 'active' && !v.suspended).length;
+  const activeCount = vendors.filter((v) => v.status === 'active').length;
 
   const FormFields = ({ form, setForm }) => (
     <>
@@ -161,6 +172,12 @@ export default function AdminVendors() {
 
   return (
     <div className="p-6">
+      {loading && (
+        <div className="flex items-center justify-center h-32">
+          <Loader2 className="w-7 h-7 text-primary-600 animate-spin" />
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
@@ -215,18 +232,17 @@ export default function AdminVendors() {
       {/* Vendor cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         {filtered.map((vendor) => {
-          const vendorEvents = getVendorEvents(vendor.id);
           const commission = getVendorCommission(vendor);
           return (
             <div
               key={vendor.id}
-              className={`card p-5 ${vendor.suspended ? 'opacity-75 border-orange-200' : ''}`}
+              className={`card p-5 ${vendor.status === 'suspended' ? 'opacity-75 border-orange-200' : ''}`}
             >
               {/* Top row */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-2xl font-black text-lg flex items-center justify-center shrink-0 ${vendor.suspended ? 'bg-gray-200 text-gray-500' : 'bg-primary-100 text-primary-700'}`}>
-                    {vendor.avatar}
+                  <div className={`w-12 h-12 rounded-2xl font-black text-lg flex items-center justify-center shrink-0 ${vendor.status === 'suspended' ? 'bg-gray-200 text-gray-500' : 'bg-primary-100 text-primary-700'}`}>
+                    {(vendor.name || '?').charAt(0)}
                   </div>
                   <div>
                     <p className="font-bold text-gray-900 leading-tight">{vendor.name}</p>
@@ -253,7 +269,7 @@ export default function AdminVendors() {
               {/* Stats */}
               <div className="grid grid-cols-3 gap-2 mb-4">
                 <div className="bg-gray-50 rounded-xl p-2.5 text-center">
-                  <p className="text-base font-black text-gray-900">{vendorEvents.length}</p>
+                  <p className="text-base font-black text-gray-900">{vendor.totalEvents || 0}</p>
                   <p className="text-xs text-gray-500">Events</p>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-2.5 text-center">
@@ -290,17 +306,17 @@ export default function AdminVendors() {
                   </>
                 )}
 
-                {vendor.status === 'active' && (
+                {(vendor.status === 'active' || vendor.status === 'suspended') && (
                   <button
                     onClick={() => toggleSuspend(vendor.id)}
                     className={`flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium rounded-lg transition-colors ${
-                      vendor.suspended
+                      vendor.status === 'suspended'
                         ? 'text-green-700 bg-green-50 hover:bg-green-100'
                         : 'text-orange-600 bg-orange-50 hover:bg-orange-100'
                     }`}
                   >
-                    {vendor.suspended ? (
-                      <><PlayCircle className="w-3.5 h-3.5" /> Unsuspend</>
+                    {vendor.status === 'suspended' ? (
+                      <><PlayCircle className="w-3.5 h-3.5" /> Activate</>
                     ) : (
                       <><PauseCircle className="w-3.5 h-3.5" /> Suspend</>
                     )}
@@ -329,7 +345,7 @@ export default function AdminVendors() {
             </div>
             <div className="flex items-center gap-4 mb-5">
               <div className="w-16 h-16 rounded-2xl bg-primary-100 text-primary-700 font-black text-2xl flex items-center justify-center">
-                {viewVendor.avatar}
+                {(viewVendor.name || '?').charAt(0)}
               </div>
               <div>
                 <p className="text-xl font-bold text-gray-900">{viewVendor.name}</p>
@@ -344,7 +360,7 @@ export default function AdminVendors() {
                 { label: 'Phone', value: viewVendor.phone },
                 { label: 'Company', value: viewVendor.company },
                 { label: 'M-Pesa Payout', value: viewVendor.mpesaNumber || '—' },
-                { label: 'Joined', value: new Date(viewVendor.joinedDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'long', year: 'numeric' }) },
+                { label: 'Joined', value: viewVendor.joinedAt ? new Date(viewVendor.joinedAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'long', year: 'numeric' }) : '—' },
               ].map(({ label, value }) => (
                 <div key={label} className="flex justify-between py-1.5 border-b border-gray-50">
                   <span className="text-gray-500">{label}</span>

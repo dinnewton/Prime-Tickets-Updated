@@ -10,7 +10,9 @@ import { categories } from '../../data/events';
 
 export default function Home() {
   const [searchParams] = useSearchParams();
-  const { selectedCategory, searchQuery, setCategory, setSearch, getFilteredEvents } = useEventStore();
+  const { selectedCategory, searchQuery, setCategory, setSearch, getFilteredEvents, fetchEvents } = useEventStore();
+
+  useEffect(() => { fetchEvents(); }, []);
 
   // Handle URL-driven category
   useEffect(() => {

@@ -22,10 +22,9 @@ export default function CreateEvent() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    addEvent({
+    await addEvent({
       ...form,
-      vendorId: user?.vendorId || 'v1',
+      vendorId: user?.id || user?.vendorId,
       vendorName: user?.name || 'My Company',
       price: Number(form.price),
       vipPrice: Number(form.vipPrice) || Number(form.price) * 2,

@@ -1,12 +1,20 @@
-import { useState } from 'react';
-import { Search, MoreVertical, Ban, Trash2, Eye, X } from 'lucide-react';
-import { users as initialUsers } from '../../data/users';
+import { useState, useEffect } from 'react';
+import { Search, MoreVertical, Ban, Trash2, Eye, X, Loader2 } from 'lucide-react';
+import { adminApi } from '../../services/api';
 
 export default function AdminUsers() {
-  const [users, setUsers] = useState(initialUsers);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [viewUser, setViewUser] = useState(null);
   const [actionMenu, setActionMenu] = useState(null);
+
+  useEffect(() => {
+    adminApi.users()
+      .then(setUsers)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   const filtered = users.filter(
     (u) =>
@@ -14,8 +22,12 @@ export default function AdminUsers() {
       u.email.toLowerCase().includes(search.toLowerCase())
   );
 
-  const toggleStatus = (id) =>
-    setUsers(users.map((u) => u.id === id ? { ...u, status: u.status === 'active' ? 'inactive' : 'active' } : u));
+  const toggleStatus = async (id) => {
+    const user = users.find((u) => u.id === id);
+    const newStatus = user.status === 'active' ? 'suspended' : 'active';
+    await adminApi.setUserStatus(id, newStatus).catch(() => {});
+    setUsers(users.map((u) => u.id === id ? { ...u, status: newStatus } : u));
+  };
 
   const remove = (id) => setUsers(users.filter((u) => u.id !== id));
 
@@ -26,7 +38,8 @@ export default function AdminUsers() {
           <h1 className="text-2xl font-black text-gray-900">Users</h1>
           <p className="text-gray-500">
             {users.filter((u) => u.status === 'active').length} active ·{' '}
-            {users.filter((u) => u.status === 'inactive').length} inactive
+            {users.filter((u) => u.status === 'suspended').length} suspended
+            {loading && <Loader2 className="w-4 h-4 animate-spin inline ml-2" />}
           </p>
         </div>
       </div>

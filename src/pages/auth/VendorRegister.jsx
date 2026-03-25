@@ -17,6 +17,7 @@ export default function VendorRegister() {
     company: '', category: '', bio: '',
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleNext = (e) => {
     e.preventDefault();
@@ -26,9 +27,22 @@ export default function VendorRegister() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    registerVendor(form);
-    navigate('/vendor');
+    setError('');
+    const result = await registerVendor({
+      name: form.name,
+      ownerName: form.name,
+      email: form.email,
+      password: form.password,
+      phone: form.phone,
+      category: form.category,
+      description: form.bio,
+    });
+    setLoading(false);
+    if (result.success) {
+      navigate('/vendor');
+    } else {
+      setError(result.error || 'Registration failed. Please try again.');
+    }
   };
 
   const perks = [
@@ -100,6 +114,10 @@ export default function VendorRegister() {
             Already have an account?{' '}
             <Link to="/login" className="text-primary-600 font-semibold hover:underline">Sign in</Link>
           </p>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 mb-4 text-sm">{error}</div>
+          )}
 
           {step === 1 ? (
             <form onSubmit={handleNext} className="space-y-4">
