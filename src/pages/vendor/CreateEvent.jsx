@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ImageIcon, CheckCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useEventStore from '../../store/eventStore';
+import ImageUpload from '../../components/common/ImageUpload';
 import { categories } from '../../data/events';
 
 const emptyForm = {
@@ -140,20 +141,7 @@ export default function CreateEvent() {
         {/* Image */}
         <div className="card p-6">
           <h2 className="text-lg font-bold text-gray-900 mb-5">Event Image</h2>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Image URL</label>
-            <input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} className="input-field" placeholder="https://images.unsplash.com/..." />
-          </div>
-          {form.image ? (
-            <div className="mt-4 h-48 rounded-xl overflow-hidden">
-              <img src={form.image} alt="Preview" className="w-full h-full object-cover" />
-            </div>
-          ) : (
-            <div className="mt-4 h-48 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400">
-              <ImageIcon className="w-10 h-10 mb-2" />
-              <p className="text-sm">Image preview will appear here</p>
-            </div>
-          )}
+          <ImageUpload value={form.image} onChange={(url) => setForm({ ...form, image: url })} />
         </div>
 
         {/* Feature toggle */}

@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
 import {
   Ticket, LayoutDashboard, CalendarDays, Building2, Users,
-  LogOut, Menu, X, Bell, ChevronDown,
+  LogOut, Menu, X, Bell, ChevronDown, MessageCircle,
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 
@@ -11,12 +11,27 @@ const navItems = [
   { to: '/admin/events', icon: CalendarDays, label: 'Events' },
   { to: '/admin/vendors', icon: Building2, label: 'Vendors' },
   { to: '/admin/users', icon: Users, label: 'Users' },
+  { to: '/admin/chat', icon: MessageCircle, label: 'Live Chat' },
 ];
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, logout } = useAuthStore();
+  const [chatUnread, setChatUnread] = useState(0);
+  const { user, token, logout } = useAuthStore();
   const navigate = useNavigate();
+
+  // Poll unread chat count every 15s
+  useEffect(() => {
+    const fetchUnread = () => {
+      fetch('/api/chat/unread', { headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => r.json())
+        .then((d) => setChatUnread(d.unread || 0))
+        .catch(() => {});
+    };
+    fetchUnread();
+    const id = setInterval(fetchUnread, 15000);
+    return () => clearInterval(id);
+  }, [token]);
 
   const handleLogout = () => {
     logout();
@@ -57,6 +72,11 @@ export default function AdminLayout() {
           >
             <Icon className="w-5 h-5" />
             {label}
+            {label === 'Live Chat' && chatUnread > 0 && (
+              <span className="ml-auto bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                {chatUnread}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

@@ -3,6 +3,7 @@ import { Search, Plus, Pencil, Trash2, Calendar, MapPin, X } from 'lucide-react'
 import useEventStore from '../../store/eventStore';
 import { vendors } from '../../data/vendors';
 import { categories } from '../../data/events';
+import ImageUpload from '../../components/common/ImageUpload';
 
 const statusOptions = ['on_sale', 'almost_sold_out', 'sold_out'];
 
@@ -217,8 +218,8 @@ export default function AdminEvents() {
                   </select>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Image URL</label>
-                  <input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} className="input-field" placeholder="https://..." />
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Event Image</label>
+                  <ImageUpload value={form.image} onChange={(url) => setForm({ ...form, image: url })} />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Tags (comma separated)</label>

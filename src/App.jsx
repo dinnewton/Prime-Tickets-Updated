@@ -26,6 +26,10 @@ import VendorDashboard from './pages/vendor/Dashboard';
 import VendorEvents from './pages/vendor/Events';
 import CreateEvent from './pages/vendor/CreateEvent';
 
+// Chat
+import ChatWidget from './components/chat/ChatWidget';
+import AdminChat from './pages/admin/Chat';
+
 // Admin route guard — redirects to the hidden admin login, not the public one
 function RequireAdmin({ children }) {
   const { isAuthenticated, user } = useAuthStore();
@@ -43,9 +47,16 @@ function RequireAuth({ children, allowedRoles }) {
   return children;
 }
 
+function ClientChatWidget() {
+  const { user } = useAuthStore();
+  if (user?.role === 'admin' || user?.role === 'vendor') return null;
+  return <ChatWidget />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <ClientChatWidget />
       <Routes>
         {/* Public / Client */}
         <Route path="/" element={<Home />} />
@@ -74,6 +85,7 @@ export default function App() {
           <Route path="events" element={<AdminEvents />} />
           <Route path="vendors" element={<AdminVendors />} />
           <Route path="users" element={<AdminUsers />} />
+          <Route path="chat" element={<AdminChat />} />
         </Route>
 
         {/* Vendor */}
