@@ -4,11 +4,19 @@ import { io } from 'socket.io-client';
 // fall back to localhost:5000 in dev (Vite proxy doesn't cover WebSockets)
 const SOCKET_URL = import.meta.env.PROD ? window.location.origin : 'http://localhost:5000';
 
+// Simple UUID v4 that works on HTTP (crypto.randomUUID requires HTTPS)
+function randomUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 // Persist visitor session across page reloads
 function getSessionId() {
   let id = localStorage.getItem('pt-chat-session');
   if (!id) {
-    id = crypto.randomUUID();
+    id = randomUUID();
     localStorage.setItem('pt-chat-session', id);
   }
   return id;
