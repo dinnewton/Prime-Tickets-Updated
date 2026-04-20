@@ -20,7 +20,10 @@ const io = new Server(server, {
 });
 
 io.on('connection', (socket) => {
-  const { sessionId, visitorName, role } = socket.handshake.auth;
+  const { sessionId, visitorName, role, userId } = socket.handshake.auth;
+
+  // Each authenticated user joins their personal room for DMs + notifications
+  if (userId) socket.join(`user:${userId}`);
 
   if (role === 'admin') {
     socket.join('admin-room');
@@ -114,6 +117,7 @@ app.use('/api/uploads',   require('./routes/uploads'));
 app.use('/api/chat',      require('./routes/chat'));
 app.use('/api/market',    require('./routes/market'));
 app.use('/api/transfers', require('./routes/transfers'));
+app.use('/api/network',   require('./routes/network'));
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString(), env: process.env.MPESA_ENV });

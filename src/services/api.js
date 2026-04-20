@@ -87,6 +87,19 @@ export const transfersApi = {
     request('POST', '/transfers', { bookingId, recipientEmail }),
 };
 
+// ─── Networking ───────────────────────────────────────────────────────────────
+export const networkApi = {
+  updateProfile:  (data)           => request('PATCH', '/auth/profile', data),
+  attendees:      (eventId)        => request('GET',   `/network/attendees/${eventId}`),
+  connections:    ()               => request('GET',   '/network/connections'),
+  requests:       ()               => request('GET',   '/network/requests'),
+  connect:        (toUserId, eventId) => request('POST', '/network/connect', { toUserId, eventId }),
+  respond:        (id, action)     => request('PATCH', `/network/connect/${id}`, { action }),
+  thread:         (userId)         => request('GET',   `/network/messages/${userId}`),
+  send:           (toUserId, text) => request('POST',  '/network/messages', { toUserId, text }),
+  unread:         ()               => request('GET',   '/network/unread'),
+};
+
 // ─── Admin ────────────────────────────────────────────────────────────────────
 export const adminApi = {
   dashboard: () => request('GET', '/admin/dashboard'),

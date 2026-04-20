@@ -8,6 +8,7 @@ import Checkout from './pages/client/Checkout';
 import Confirmation from './pages/client/Confirmation';
 import MyTickets from './pages/client/MyTickets';
 import Market from './pages/client/Market';
+import Network from './pages/client/Network';
 
 // Auth pages
 import Login from './pages/auth/Login';
@@ -67,6 +68,7 @@ export default function App() {
         <Route path="/confirmation" element={<Confirmation />} />
         <Route path="/my-tickets" element={<MyTickets />} />
         <Route path="/market" element={<Market />} />
+        <Route path="/network" element={<Network />} />
 
         {/* Public Auth — vendor & client only */}
         <Route path="/login" element={<Login />} />

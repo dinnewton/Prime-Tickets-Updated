@@ -80,8 +80,24 @@ router.post('/vendor/register', async (req, res) => {
   res.status(201).json({ token, vendor: safeUser(vendor) });
 });
 
-// GET /api/auth/me — get current user profile
+// PATCH /api/auth/profile — update networking profile fields
 const { authMiddleware } = require('../middleware/auth');
+router.patch('/profile', authMiddleware, (req, res) => {
+  const { bio, profession, interests, networkingOptIn, phone } = req.body;
+  const allowed = {};
+  if (bio          !== undefined) allowed.bio = String(bio).slice(0, 300);
+  if (profession   !== undefined) allowed.profession = String(profession).slice(0, 80);
+  if (Array.isArray(interests))   allowed.interests = interests.slice(0, 10).map(String);
+  if (networkingOptIn !== undefined) allowed.networkingOptIn = Boolean(networkingOptIn);
+  if (phone        !== undefined) allowed.phone = String(phone).slice(0, 20);
+
+  const updated = db.updateUser(req.user.id, allowed);
+  if (!updated) return res.status(404).json({ message: 'User not found' });
+  const { password, ...safe } = updated;
+  res.json(safe);
+});
+
+// GET /api/auth/me — get current user profile
 router.get('/me', authMiddleware, (req, res) => {
   const { id, role } = req.user;
   if (role === 'vendor') {

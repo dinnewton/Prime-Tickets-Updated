@@ -268,8 +268,10 @@ if (!_data) {
 }
 
 // Ensure new collections exist in loaded data
-if (!_data.listings) _data.listings = [];
-if (!_data.transfers) _data.transfers = [];
+if (!_data.listings)        _data.listings = [];
+if (!_data.transfers)       _data.transfers = [];
+if (!_data.connections)     _data.connections = [];
+if (!_data.directMessages)  _data.directMessages = [];
 
 // Live references — mutations to these are reflected in _data
 const users     = _data.users;
@@ -277,8 +279,10 @@ const vendors   = _data.vendors;
 const events    = _data.events;
 const payments  = _data.payments;   // object keyed by checkoutRequestId
 const bookings  = _data.bookings;
-const listings  = _data.listings;
-const transfers = _data.transfers;
+const listings       = _data.listings;
+const transfers      = _data.transfers;
+const connections    = _data.connections;
+const directMessages = _data.directMessages;
 
 // ─── PERSIST ─────────────────────────────────────────────────────────────────
 function save() {
@@ -429,6 +433,52 @@ const db = {
     save();
     return transfers[idx];
   },
+
+  // Connections
+  createConnection: (data) => {
+    const conn = { id: uuidv4(), createdAt: new Date().toISOString(), status: 'pending', ...data };
+    connections.push(conn);
+    save();
+    return conn;
+  },
+  getConnectionById: (id) => connections.find((c) => c.id === id),
+  getConnectionBetween: (a, b) =>
+    connections.find(
+      (c) => (c.fromUserId === a && c.toUserId === b) || (c.fromUserId === b && c.toUserId === a)
+    ),
+  getConnectionsForUser: (userId) =>
+    connections.filter((c) => c.fromUserId === userId || c.toUserId === userId),
+  updateConnection: (id, updates) => {
+    const idx = connections.findIndex((c) => c.id === id);
+    if (idx === -1) return null;
+    connections[idx] = { ...connections[idx], ...updates };
+    save();
+    return connections[idx];
+  },
+
+  // Direct Messages
+  createMessage: (data) => {
+    const msg = { id: uuidv4(), timestamp: new Date().toISOString(), read: false, ...data };
+    directMessages.push(msg);
+    save();
+    return msg;
+  },
+  getThread: (userA, userB) =>
+    directMessages
+      .filter(
+        (m) =>
+          (m.fromUserId === userA && m.toUserId === userB) ||
+          (m.fromUserId === userB && m.toUserId === userA)
+      )
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)),
+  markThreadRead: (viewerId, otherId) => {
+    directMessages.forEach((m) => {
+      if (m.fromUserId === otherId && m.toUserId === viewerId && !m.read) m.read = true;
+    });
+    save();
+  },
+  getUnreadCount: (userId) =>
+    directMessages.filter((m) => m.toUserId === userId && !m.read).length,
 };
 
 module.exports = db;

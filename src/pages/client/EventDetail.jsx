@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Calendar, MapPin, Clock, Users, Tag, ArrowLeft,
-  Share2, Heart, CheckCircle, Ticket, Star,
+  Share2, Heart, CheckCircle, Ticket, Star, Wifi, UserPlus, UserCheck,
 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import { getEventById } from '../../data/events';
 import { getVendorById } from '../../data/vendors';
 import useEventStore from '../../store/eventStore';
+import useAuthStore from '../../store/authStore';
+import { networkApi } from '../../services/api';
 
 function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-ZA', {
@@ -28,11 +30,31 @@ export default function EventDetail() {
   const navigate = useNavigate();
   const event = getEventById(id);
   const { addToCart } = useEventStore();
+  const { isAuthenticated, user } = useAuthStore();
 
   const [selectedType, setSelectedType] = useState('standard');
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const [liked, setLiked] = useState(false);
+
+  const [attendees, setAttendees] = useState([]);
+  const [connectingId, setConnectingId] = useState(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || !id) return;
+    networkApi.attendees(id).then(setAttendees).catch(() => {});
+  }, [id, isAuthenticated]);
+
+  async function handleConnect(attendee) {
+    setConnectingId(attendee.id);
+    try {
+      await networkApi.connect(attendee.id, id);
+      setAttendees((prev) =>
+        prev.map((a) => a.id === attendee.id ? { ...a, connectionStatus: 'pending' } : a)
+      );
+    } catch {}
+    setConnectingId(null);
+  }
 
   if (!event) {
     return (
@@ -182,6 +204,65 @@ export default function EventDetail() {
                       <p className="text-sm text-gray-600 leading-relaxed">{vendor.bio}</p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Attendee Networking */}
+              {isAuthenticated && (
+                <div className="card p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                      <Wifi className="w-5 h-5 text-primary-600" /> Who's Going
+                    </h2>
+                    <Link to="/network" className="text-xs text-primary-600 font-semibold hover:underline">My Network</Link>
+                  </div>
+
+                  {attendees.length === 0 ? (
+                    <div className="text-center py-6 text-gray-400 text-sm">
+                      {user?.networkingOptIn === false
+                        ? 'Enable networking in your profile to see other attendees.'
+                        : 'No opted-in attendees yet — be the first to connect!'}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {attendees.slice(0, 6).map((a) => (
+                        <div key={a.id} className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-primary-100 text-primary-700 font-bold text-sm flex items-center justify-center flex-shrink-0">
+                            {a.name?.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm text-gray-900 truncate">{a.name}</p>
+                            {a.profession && <p className="text-xs text-gray-400 truncate">{a.profession}</p>}
+                            {a.interests?.length > 0 && (
+                              <div className="flex gap-1 mt-0.5 flex-wrap">
+                                {a.interests.slice(0, 3).map((i) => (
+                                  <span key={i} className="text-[10px] bg-primary-50 text-primary-600 px-1.5 py-0.5 rounded-full">{i}</span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          {a.connectionStatus === 'accepted' ? (
+                            <span className="flex items-center gap-1 text-xs text-green-600 font-semibold">
+                              <UserCheck className="w-3.5 h-3.5" /> Connected
+                            </span>
+                          ) : a.connectionStatus === 'pending' ? (
+                            <span className="text-xs text-gray-400 font-medium">Pending</span>
+                          ) : (
+                            <button
+                              onClick={() => handleConnect(a)}
+                              disabled={connectingId === a.id}
+                              className="flex items-center gap-1 text-xs font-semibold text-primary-600 border border-primary-200 hover:border-primary-400 hover:bg-primary-50 px-2.5 py-1.5 rounded-lg transition-all disabled:opacity-50"
+                            >
+                              <UserPlus className="w-3.5 h-3.5" /> Connect
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      {attendees.length > 6 && (
+                        <p className="text-xs text-gray-400 text-center pt-1">+{attendees.length - 6} more attendees</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

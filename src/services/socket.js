@@ -36,6 +36,17 @@ function getVisitorName() {
 let visitorSocket = null;
 let adminSocket = null;
 
+function getAuthUserId() {
+  try {
+    const raw = localStorage.getItem('prime-auth');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return parsed?.state?.user?.id || null;
+    }
+  } catch {}
+  return null;
+}
+
 export function getVisitorSocket() {
   if (!visitorSocket || visitorSocket.disconnected) {
     visitorSocket = io(SOCKET_URL, {
@@ -43,6 +54,7 @@ export function getVisitorSocket() {
         sessionId: getSessionId(),
         visitorName: getVisitorName(),
         role: 'visitor',
+        userId: getAuthUserId(),
       },
       autoConnect: true,
     });

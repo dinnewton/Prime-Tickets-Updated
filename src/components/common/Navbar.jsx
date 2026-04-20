@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Ticket, ShoppingCart, Menu, X, ChevronDown, LogOut, LayoutDashboard, User, Tag } from 'lucide-react';
+import { Ticket, ShoppingCart, Menu, X, ChevronDown, LogOut, LayoutDashboard, User, Tag, Wifi } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useEventStore from '../../store/eventStore';
 
@@ -47,6 +47,9 @@ export default function Navbar() {
             </Link>
             <Link to="/market" className="flex items-center gap-1.5 px-4 py-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg font-medium text-sm transition-all">
               <Tag className="w-3.5 h-3.5" /> Resale Market
+            </Link>
+            <Link to="/network" className="flex items-center gap-1.5 px-4 py-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg font-medium text-sm transition-all">
+              <Wifi className="w-3.5 h-3.5" /> Network
             </Link>
           </div>
 
@@ -145,7 +148,7 @@ export default function Navbar() {
               ['/?category=Music', 'Music'],
               ['/?category=Sports', 'Sports'],
               ['/market', 'Resale Market'],
-              ...(isAuthenticated ? [['/my-tickets', 'My Tickets']] : []),
+              ...(isAuthenticated ? [['/my-tickets', 'My Tickets'], ['/network', 'Network']] : []),
             ].map(([path, label]) => (
               <Link
                 key={path}
