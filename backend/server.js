@@ -89,6 +89,11 @@ if (!isProd) {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Guard against malformed URIs from security scanners (prevents crash-restart loops)
+app.use((req, res, next) => {
+  try { decodeURIComponent(req.path); next(); } catch { res.status(400).end(); }
+});
+
 // Serve uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
