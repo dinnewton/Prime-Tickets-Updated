@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../db/store');
 const { stkPush, stkQuery } = require('../services/mpesa');
 const { authMiddleware } = require('../middleware/auth');
+const { sendTicketConfirmation } = require('../services/notifications');
 
 /**
  * POST /api/payments/mpesa/stk-push
@@ -124,6 +125,17 @@ router.post('/mpesa/callback', (req, res) => {
           }
         }
       });
+
+      // Send ticket confirmations (email, WhatsApp, SMS) — non-blocking
+      sendTicketConfirmation({
+        customerEmail: payment.customerEmail,
+        customerName: payment.customerName,
+        phone: payment.phone,
+        orderRef: payment.orderRef,
+        mpesaCode: meta.MpesaReceiptNumber,
+        amount: payment.amount,
+        cart: payment.cart,
+      }).catch((err) => console.error('[Notifications] Failed:', err.message));
     } else {
       const statusMap = {
         1032: 'cancelled',
