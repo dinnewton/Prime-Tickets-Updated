@@ -42,6 +42,16 @@ const useAuthStore = create(
         }
       },
 
+      googleLogin: async (credential) => {
+        try {
+          const res = await authApi.googleLogin(credential);
+          set({ user: res.user, token: res.token, isAuthenticated: true });
+          return { success: true, role: res.user.role };
+        } catch (e) {
+          return { success: false, error: e.message || 'Google sign-in failed' };
+        }
+      },
+
       logout: () => set({ user: null, token: null, isAuthenticated: false }),
 
       register: async (data) => {

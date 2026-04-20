@@ -45,6 +45,7 @@ export const authApi = {
   vendorLogin: (email, password) => request('POST', '/auth/vendor/login', { email, password }),
   register: (data) => request('POST', '/auth/register', data),
   vendorRegister: (data) => request('POST', '/auth/vendor/register', data),
+  googleLogin: (credential) => request('POST', '/auth/google', { credential }),
   me: () => request('GET', '/auth/me'),
 };
 

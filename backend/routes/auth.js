@@ -97,6 +97,50 @@ router.patch('/profile', authMiddleware, (req, res) => {
   res.json(safe);
 });
 
+// POST /api/auth/google — verify Google credential token, find-or-create user
+router.post('/google', async (req, res) => {
+  const { credential } = req.body;
+  if (!credential) return res.status(400).json({ message: 'Google credential required' });
+
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) return res.status(503).json({ message: 'Google login not configured on this server' });
+
+  try {
+    const { OAuth2Client } = require('google-auth-library');
+    const client = new OAuth2Client(clientId);
+    const ticket = await client.verifyIdToken({ idToken: credential, audience: clientId });
+    const payload = ticket.getPayload();
+
+    const { email, name, sub: googleId } = payload;
+    if (!email) return res.status(400).json({ message: 'Google account has no email' });
+
+    // Find existing user or create one
+    let user = db.getUserByEmail(email);
+    if (!user) {
+      user = db.createUser({
+        name,
+        email,
+        googleId,
+        password: bcrypt.hashSync(googleId + process.env.JWT_SECRET, 10), // unusable password
+        role: 'client',
+      });
+    } else if (!user.googleId) {
+      db.updateUser(user.id, { googleId });
+    }
+
+    if (user.status === 'suspended') {
+      return res.status(403).json({ message: 'Account suspended. Contact support.' });
+    }
+
+    const token = signToken({ id: user.id, email: user.email, role: user.role, name: user.name });
+    const { password, ...safe } = user;
+    res.json({ token, user: safe });
+  } catch (err) {
+    console.error('[Google Auth]', err.message);
+    res.status(401).json({ message: 'Invalid Google credential' });
+  }
+});
+
 // GET /api/auth/me — get current user profile
 router.get('/me', authMiddleware, (req, res) => {
   const { id, role } = req.user;

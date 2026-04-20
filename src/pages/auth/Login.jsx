@@ -1,15 +1,25 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Ticket, Eye, EyeOff, AlertCircle, Users, Building2 } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 import useAuthStore from '../../store/authStore';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuthStore();
+  const { login, googleLogin } = useAuthStore();
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const handleGoogle = async (credentialResponse) => {
+    setError('');
+    setLoading(true);
+    const result = await googleLogin(credentialResponse.credential);
+    setLoading(false);
+    if (result.success) navigate('/');
+    else setError(result.error);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -154,6 +164,23 @@ export default function Login() {
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
+
+          <div className="flex items-center gap-3 my-6">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs text-gray-400 font-medium">or continue with</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={handleGoogle}
+              onError={() => setError('Google sign-in failed. Please try again.')}
+              width="368"
+              text="signin_with"
+              shape="rectangular"
+              theme="outline"
+            />
+          </div>
 
           <p className="text-center text-sm text-gray-500 mt-8">
             Are you an event organiser?{' '}
