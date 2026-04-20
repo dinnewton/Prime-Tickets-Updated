@@ -6,6 +6,8 @@ import Home from './pages/client/Home';
 import EventDetail from './pages/client/EventDetail';
 import Checkout from './pages/client/Checkout';
 import Confirmation from './pages/client/Confirmation';
+import MyTickets from './pages/client/MyTickets';
+import Market from './pages/client/Market';
 
 // Auth pages
 import Login from './pages/auth/Login';
@@ -63,6 +65,8 @@ export default function App() {
         <Route path="/events/:id" element={<EventDetail />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/confirmation" element={<Confirmation />} />
+        <Route path="/my-tickets" element={<MyTickets />} />
+        <Route path="/market" element={<Market />} />
 
         {/* Public Auth — vendor & client only */}
         <Route path="/login" element={<Login />} />

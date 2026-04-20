@@ -126,6 +126,35 @@ router.post('/mpesa/callback', (req, res) => {
         }
       });
 
+      // Handle resale purchase: transfer booking to buyer
+      if (payment.type === 'resale' && payment.listingId) {
+        const listing = db.getListingById(payment.listingId);
+        if (listing && listing.status === 'active') {
+          // Mark seller's original booking as sold
+          db.updateBooking(listing.bookingId, { status: 'sold', soldTo: payment.buyerId });
+          // Create booking for buyer
+          db.createBooking({
+            userId: payment.buyerId,
+            eventId: listing.eventId,
+            eventTitle: listing.eventTitle,
+            eventDate: listing.eventDate,
+            eventTime: listing.eventTime,
+            venue: listing.venue,
+            image: listing.image,
+            ticketType: listing.ticketType,
+            quantity: listing.quantity,
+            unitPrice: listing.askingPrice,
+            totalPrice: listing.askingPrice,
+            mpesaCode: meta.MpesaReceiptNumber,
+            orderRef: payment.orderRef,
+            customerName: payment.buyerName,
+            customerEmail: payment.buyerEmail,
+            purchasedViaResale: true,
+          });
+          db.updateListing(listing.id, { status: 'sold', soldTo: payment.buyerId, soldAt: new Date().toISOString() });
+        }
+      }
+
       // Send ticket confirmations (email, WhatsApp, SMS) — non-blocking
       sendTicketConfirmation({
         customerEmail: payment.customerEmail,
@@ -197,6 +226,16 @@ router.get('/mpesa/status/:checkoutRequestId', async (req, res) => {
     orderRef: payment.orderRef,
     amount: payment.amount,
   });
+});
+
+/**
+ * GET /api/payments/bookings/mine — current user's bookings
+ */
+router.get('/bookings/mine', authMiddleware, (req, res) => {
+  const mine = db.getBookingsByUser(req.user.id).sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  );
+  res.json(mine);
 });
 
 /**

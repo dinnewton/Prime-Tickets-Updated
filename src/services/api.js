@@ -68,6 +68,25 @@ export const paymentsApi = {
     request('GET', `/payments/mpesa/status/${checkoutRequestId}`),
 };
 
+// ─── Bookings (current user) ──────────────────────────────────────────────────
+export const bookingsApi = {
+  mine: () => request('GET', '/payments/bookings/mine'),
+};
+
+// ─── Resale Market ────────────────────────────────────────────────────────────
+export const marketApi = {
+  list: () => request('GET', '/market'),
+  createListing: (data) => request('POST', '/market/list', data),
+  cancelListing: (id) => request('DELETE', `/market/${id}`),
+  buy: (id, phone) => request('POST', `/market/${id}/buy`, { phone }),
+};
+
+// ─── Transfers ────────────────────────────────────────────────────────────────
+export const transfersApi = {
+  transfer: (bookingId, recipientEmail) =>
+    request('POST', '/transfers', { bookingId, recipientEmail }),
+};
+
 // ─── Admin ────────────────────────────────────────────────────────────────────
 export const adminApi = {
   dashboard: () => request('GET', '/admin/dashboard'),

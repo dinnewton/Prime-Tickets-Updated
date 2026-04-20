@@ -262,15 +262,23 @@ if (!_data) {
     events: seedEvents,
     payments: {},
     bookings: [],
+    listings: [],
+    transfers: [],
   };
 }
 
+// Ensure new collections exist in loaded data
+if (!_data.listings) _data.listings = [];
+if (!_data.transfers) _data.transfers = [];
+
 // Live references — mutations to these are reflected in _data
-const users    = _data.users;
-const vendors  = _data.vendors;
-const events   = _data.events;
-const payments = _data.payments;   // object keyed by checkoutRequestId
-const bookings = _data.bookings;
+const users     = _data.users;
+const vendors   = _data.vendors;
+const events    = _data.events;
+const payments  = _data.payments;   // object keyed by checkoutRequestId
+const bookings  = _data.bookings;
+const listings  = _data.listings;
+const transfers = _data.transfers;
 
 // ─── PERSIST ─────────────────────────────────────────────────────────────────
 function save() {
@@ -370,13 +378,57 @@ const db = {
 
   // Bookings
   createBooking: (data) => {
-    const booking = { id: uuidv4(), createdAt: new Date().toISOString(), ...data };
+    const booking = { id: uuidv4(), createdAt: new Date().toISOString(), status: 'active', ...data };
     bookings.push(booking);
     save();
     return booking;
   },
-  getBookings:        ()       => bookings,
-  getBookingsByUser:  (userId) => bookings.filter((b) => b.userId === userId),
+  getBookings:       ()       => bookings,
+  getBookingsByUser: (userId) => bookings.filter((b) => b.userId === userId),
+  getBookingById:    (id)     => bookings.find((b) => b.id === id),
+  updateBooking: (id, updates) => {
+    const idx = bookings.findIndex((b) => b.id === id);
+    if (idx === -1) return null;
+    bookings[idx] = { ...bookings[idx], ...updates };
+    save();
+    return bookings[idx];
+  },
+
+  // Resale listings
+  createListing: (data) => {
+    const listing = { id: uuidv4(), createdAt: new Date().toISOString(), status: 'active', ...data };
+    listings.push(listing);
+    save();
+    return listing;
+  },
+  getListings:       ()     => listings,
+  getActiveListings: ()     => listings.filter((l) => l.status === 'active'),
+  getListingById:    (id)   => listings.find((l) => l.id === id),
+  getListingsByUser: (userId) => listings.filter((l) => l.sellerId === userId),
+  updateListing: (id, updates) => {
+    const idx = listings.findIndex((l) => l.id === id);
+    if (idx === -1) return null;
+    listings[idx] = { ...listings[idx], ...updates };
+    save();
+    return listings[idx];
+  },
+
+  // Transfers
+  createTransfer: (data) => {
+    const transfer = { id: uuidv4(), createdAt: new Date().toISOString(), status: 'pending', ...data };
+    transfers.push(transfer);
+    save();
+    return transfer;
+  },
+  getTransfers:      ()     => transfers,
+  getTransferById:   (id)   => transfers.find((t) => t.id === id),
+  updateTransfer: (id, updates) => {
+    const idx = transfers.findIndex((t) => t.id === id);
+    if (idx === -1) return null;
+    transfers[idx] = { ...transfers[idx], ...updates };
+    save();
+    return transfers[idx];
+  },
 };
 
 module.exports = db;

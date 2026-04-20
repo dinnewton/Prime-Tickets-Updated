@@ -100,13 +100,15 @@ app.use((req, _res, next) => {
 });
 
 // ─── API Routes ────────────────────────────────────────────────────────────────
-app.use('/api/auth',     require('./routes/auth'));
-app.use('/api/events',   require('./routes/events'));
-app.use('/api/vendors',  require('./routes/vendors'));
-app.use('/api/payments', require('./routes/payments'));
-app.use('/api/admin',    require('./routes/admin'));
-app.use('/api/uploads',  require('./routes/uploads'));
-app.use('/api/chat',     require('./routes/chat'));
+app.use('/api/auth',      require('./routes/auth'));
+app.use('/api/events',    require('./routes/events'));
+app.use('/api/vendors',   require('./routes/vendors'));
+app.use('/api/payments',  require('./routes/payments'));
+app.use('/api/admin',     require('./routes/admin'));
+app.use('/api/uploads',   require('./routes/uploads'));
+app.use('/api/chat',      require('./routes/chat'));
+app.use('/api/market',    require('./routes/market'));
+app.use('/api/transfers', require('./routes/transfers'));
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString(), env: process.env.MPESA_ENV });

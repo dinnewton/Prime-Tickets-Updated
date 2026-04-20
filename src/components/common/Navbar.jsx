@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Ticket, ShoppingCart, Menu, X, ChevronDown, LogOut, LayoutDashboard, User } from 'lucide-react';
+import { Ticket, ShoppingCart, Menu, X, ChevronDown, LogOut, LayoutDashboard, User, Tag } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useEventStore from '../../store/eventStore';
 
@@ -45,8 +45,8 @@ export default function Navbar() {
             <Link to="/?category=Sports" className="px-4 py-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg font-medium text-sm transition-all">
               Sports
             </Link>
-            <Link to="/?category=Comedy" className="px-4 py-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg font-medium text-sm transition-all">
-              Comedy
+            <Link to="/market" className="flex items-center gap-1.5 px-4 py-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg font-medium text-sm transition-all">
+              <Tag className="w-3.5 h-3.5" /> Resale Market
             </Link>
           </div>
 
@@ -96,7 +96,7 @@ export default function Navbar() {
                       </Link>
                     )}
                     <Link
-                      to="/"
+                      to="/my-tickets"
                       onClick={() => setUserMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                     >
@@ -140,14 +140,20 @@ export default function Navbar() {
         {/* Mobile menu */}
         {menuOpen && (
           <div className="md:hidden border-t border-gray-100 py-4 space-y-1">
-            {['/', '/?category=Music', '/?category=Sports', '/?category=Comedy'].map((path, i) => (
+            {[
+              ['/', 'All Events'],
+              ['/?category=Music', 'Music'],
+              ['/?category=Sports', 'Sports'],
+              ['/market', 'Resale Market'],
+              ...(isAuthenticated ? [['/my-tickets', 'My Tickets']] : []),
+            ].map(([path, label]) => (
               <Link
-                key={i}
+                key={path}
                 to={path}
                 onClick={() => setMenuOpen(false)}
                 className="block px-4 py-2 text-gray-700 hover:bg-primary-50 hover:text-primary-700 rounded-xl font-medium transition-all"
               >
-                {['All Events', 'Music', 'Sports', 'Comedy'][i]}
+                {label}
               </Link>
             ))}
           </div>
