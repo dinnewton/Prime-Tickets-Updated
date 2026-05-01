@@ -16,7 +16,7 @@ function buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart, event
           <span style="color:#666;font-size:13px">${item.ticketType?.toUpperCase()} · ${item.quantity} ticket${item.quantity > 1 ? 's' : ''}</span>
         </td>
         <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:600">
-          R${(item.price * item.quantity).toFixed(2)}
+          Ksh ${(item.price * item.quantity).toFixed(2)}
         </td>
       </tr>`
     )
@@ -55,7 +55,7 @@ function buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart, event
             ${mpesaCode ? `<tr><td style="color:#666;font-size:13px;padding-top:8px">M-Pesa Code</td><td style="text-align:right;font-weight:600;padding-top:8px">${mpesaCode}</td></tr>` : ''}
             <tr>
               <td style="color:#666;font-size:13px;padding-top:8px">Total Paid</td>
-              <td style="text-align:right;font-weight:700;font-size:18px;color:#1a1a2e;padding-top:8px">R${Number(amount).toFixed(2)}</td>
+              <td style="text-align:right;font-weight:700;font-size:18px;color:#1a1a2e;padding-top:8px">Ksh ${Number(amount).toFixed(2)}</td>
             </tr>
           </table>
 
@@ -136,7 +136,7 @@ function buildSmsText({ customerName, orderRef, mpesaCode, amount, cart }) {
     `Ref: ${orderRef}\n` +
     `${mpesaCode ? `M-Pesa: ${mpesaCode}\n` : ''}` +
     `Events: ${eventNames}\n` +
-    `Total: R${Number(amount).toFixed(2)}\n` +
+    `Total: Ksh ${Number(amount).toFixed(2)}\n` +
     `Show this message at the gate. Enjoy!`
   );
 }

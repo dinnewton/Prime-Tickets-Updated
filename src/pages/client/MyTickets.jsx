@@ -201,7 +201,7 @@ export default function MyTickets() {
             <strong>{sellModal.eventTitle}</strong> · {sellModal.ticketType?.toUpperCase()}
           </p>
           <p className="text-xs text-gray-400 mb-4">
-            Original price: R{sellModal.unitPrice?.toLocaleString()} · Max allowed: R{Math.ceil(sellModal.unitPrice * 1.5)?.toLocaleString()}
+            Original price: Ksh {sellModal.unitPrice?.toLocaleString()} · Max allowed: Ksh {Math.ceil(sellModal.unitPrice * 1.5)?.toLocaleString()}
           </p>
           {sellMsg ? (
             <Feedback ok={sellMsg.ok} text={sellMsg.text} />
@@ -257,7 +257,7 @@ function BookingCard({ booking, onTransfer, onSell, onCancelListing, readOnly })
         <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
           <span className="bg-gray-100 px-2 py-0.5 rounded-full text-xs font-medium">{booking.ticketType?.toUpperCase()}</span>
           <span>×{booking.quantity}</span>
-          <span className="font-semibold text-gray-900">R{booking.totalPrice?.toLocaleString()}</span>
+          <span className="font-semibold text-gray-900">Ksh {booking.totalPrice?.toLocaleString()}</span>
           {booking.orderRef && <span className="text-xs text-gray-400">Ref: {booking.orderRef}</span>}
           {booking.mpesaCode && <span className="text-xs text-gray-400">MPesa: {booking.mpesaCode}</span>}
           {booking.purchasedViaResale && (

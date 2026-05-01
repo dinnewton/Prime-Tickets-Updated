@@ -159,9 +159,9 @@ export default function Market() {
 
                   <div className="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between">
                     <div>
-                      <p className="text-xl font-black text-primary-700">R{listing.askingPrice?.toLocaleString()}</p>
+                      <p className="text-xl font-black text-primary-700">Ksh {listing.askingPrice?.toLocaleString()}</p>
                       {listing.originalPrice && listing.askingPrice !== listing.originalPrice && (
-                        <p className="text-xs text-gray-400 line-through">R{listing.originalPrice?.toLocaleString()} face value</p>
+                        <p className="text-xs text-gray-400 line-through">Ksh {listing.originalPrice?.toLocaleString()} face value</p>
                       )}
                     </div>
                     <button
@@ -194,7 +194,7 @@ export default function Market() {
             <div className="bg-gray-50 rounded-xl p-4 mb-5">
               <p className="font-semibold text-gray-900 text-sm">{buyModal.eventTitle}</p>
               <p className="text-xs text-gray-500">{buyModal.venue} · {buyModal.ticketType?.toUpperCase()}</p>
-              <p className="text-2xl font-black text-primary-700 mt-2">R{buyModal.askingPrice?.toLocaleString()}</p>
+              <p className="text-2xl font-black text-primary-700 mt-2">Ksh {buyModal.askingPrice?.toLocaleString()}</p>
             </div>
 
             {buyStep === 'form' && (
@@ -211,7 +211,7 @@ export default function Market() {
                   />
                   <p className="text-xs text-gray-400 mt-1">You will receive an STK push on this number</p>
                 </div>
-                <button type="submit" className="btn-primary w-full">Pay R{buyModal.askingPrice?.toLocaleString()} via M-Pesa</button>
+                <button type="submit" className="btn-primary w-full">Pay Ksh {buyModal.askingPrice?.toLocaleString()} via M-Pesa</button>
               </form>
             )}
 
