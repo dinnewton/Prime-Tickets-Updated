@@ -21,9 +21,22 @@ router.patch('/conversations/:sessionId/close', authMiddleware, requireRole('adm
   res.json({ message: 'Conversation closed' });
 });
 
-// GET /api/chat/unread — admin: unread count badge
+// GET /api/chat/unread — admin: visitor + vendor unread count
 router.get('/unread', authMiddleware, requireRole('admin'), (req, res) => {
-  res.json({ unread: chat.totalUnread() });
+  res.json({ unread: chat.totalUnread() + chat.totalVendorUnread() });
+});
+
+// GET /api/chat/vendor-conversations — admin: all vendor conversations
+router.get('/vendor-conversations', authMiddleware, requireRole('admin'), (req, res) => {
+  res.json(chat.getAllVendorConversations());
+});
+
+// GET /api/chat/vendor-conversations/:vendorId — admin: single vendor conversation
+router.get('/vendor-conversations/:vendorId', authMiddleware, requireRole('admin'), (req, res) => {
+  const convo = chat.getVendorConversation(req.params.vendorId);
+  if (!convo) return res.status(404).json({ message: 'Conversation not found' });
+  chat.markVendorRead(req.params.vendorId);
+  res.json(convo);
 });
 
 module.exports = router;

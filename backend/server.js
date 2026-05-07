@@ -20,7 +20,7 @@ const io = new Server(server, {
 });
 
 io.on('connection', (socket) => {
-  const { sessionId, visitorName, role, userId } = socket.handshake.auth;
+  const { sessionId, visitorName, role, userId, vendorId, vendorName } = socket.handshake.auth;
 
   // Each authenticated user joins their personal room for DMs + notifications
   if (userId) socket.join(`user:${userId}`);
@@ -28,6 +28,24 @@ io.on('connection', (socket) => {
   if (role === 'admin') {
     socket.join('admin-room');
     console.log(`[Chat] Admin connected`);
+
+  } else if (role === 'vendor' && vendorId) {
+    // Vendor joins their own room
+    socket.join(`vendor:${vendorId}`);
+    chat.getOrCreateVendor(vendorId, vendorName);
+    console.log(`[Chat] Vendor connected: ${vendorName} (${vendorId})`);
+
+    // Send history to vendor
+    const vConvo = chat.getVendorConversation(vendorId);
+    socket.emit('chat:vendor_history', vConvo?.messages || []);
+
+    // Notify admins
+    io.to('admin-room').emit('chat:vendor_connected', {
+      vendorId,
+      vendorName,
+      unread: vConvo?.unread || 0,
+    });
+
   } else {
     // Visitor joining their own room
     socket.join(sessionId);
@@ -46,37 +64,61 @@ io.on('connection', (socket) => {
     });
   }
 
-  // Visitor sends a message
+  // ─── Visitor messages ────────────────────────────────────────────────────────
   socket.on('chat:visitor_message', ({ text }) => {
     if (!sessionId || !text?.trim()) return;
     const convo = chat.getOrCreate(sessionId, visitorName);
     const msg = chat.addMessage(sessionId, { sender: 'visitor', senderName: visitorName, text: text.trim() });
-    // Echo back to visitor
     io.to(sessionId).emit('chat:message', msg);
-    // Forward to admin room with conversation context
     io.to('admin-room').emit('chat:message', { ...msg, sessionId, visitorName, unread: convo.unread });
   });
 
-  // Admin sends a reply
+  // ─── Admin → visitor reply ───────────────────────────────────────────────────
   socket.on('chat:admin_reply', ({ targetSessionId, text }) => {
     if (!targetSessionId || !text?.trim()) return;
     const msg = chat.addMessage(targetSessionId, { sender: 'admin', senderName: 'Support', text: text.trim() });
     if (!msg) return;
     chat.markRead(targetSessionId);
-    // Send to visitor
     io.to(targetSessionId).emit('chat:message', msg);
-    // Echo to all admin tabs
     io.to('admin-room').emit('chat:message', { ...msg, sessionId: targetSessionId });
   });
 
-  // Admin marks conversation as read
   socket.on('chat:mark_read', ({ targetSessionId }) => {
     chat.markRead(targetSessionId);
     io.to('admin-room').emit('chat:read', { sessionId: targetSessionId });
   });
 
+  // ─── Vendor messages ─────────────────────────────────────────────────────────
+  socket.on('chat:vendor_message', ({ text }) => {
+    if (!vendorId || !text?.trim()) return;
+    const convo = chat.getOrCreateVendor(vendorId, vendorName);
+    const msg = chat.addVendorMessage(vendorId, { sender: 'vendor', senderName: vendorName, text: text.trim() });
+    io.to(`vendor:${vendorId}`).emit('chat:vendor_message', msg);
+    io.to('admin-room').emit('chat:vendor_message', { ...msg, vendorId, vendorName, unread: convo.unread });
+  });
+
+  // ─── Admin → vendor reply ────────────────────────────────────────────────────
+  socket.on('chat:admin_vendor_reply', ({ targetVendorId, text }) => {
+    if (!targetVendorId || !text?.trim()) return;
+    const vConvo = chat.getVendorConversation(targetVendorId);
+    if (!vConvo) return;
+    const msg = chat.addVendorMessage(targetVendorId, { sender: 'admin', senderName: 'Support', text: text.trim() });
+    if (!msg) return;
+    chat.markVendorRead(targetVendorId);
+    io.to(`vendor:${targetVendorId}`).emit('chat:vendor_message', msg);
+    io.to('admin-room').emit('chat:vendor_message', { ...msg, vendorId: targetVendorId });
+  });
+
+  socket.on('chat:mark_vendor_read', ({ targetVendorId }) => {
+    chat.markVendorRead(targetVendorId);
+    io.to('admin-room').emit('chat:vendor_read', { vendorId: targetVendorId });
+  });
+
+  // ─── Disconnect ──────────────────────────────────────────────────────────────
   socket.on('disconnect', () => {
-    if (role !== 'admin') {
+    if (role === 'vendor' && vendorId) {
+      io.to('admin-room').emit('chat:vendor_disconnected', { vendorId });
+    } else if (role !== 'admin') {
       io.to('admin-room').emit('chat:visitor_disconnected', { sessionId });
     }
   });

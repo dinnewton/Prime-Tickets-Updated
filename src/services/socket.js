@@ -72,6 +72,22 @@ export function getAdminSocket(token) {
   return adminSocket;
 }
 
+let vendorSocket = null;
+
+export function getVendorSocket(token, vendorId, vendorName) {
+  if (!vendorSocket || vendorSocket.disconnected) {
+    vendorSocket = io(SOCKET_URL, {
+      auth: { role: 'vendor', token, vendorId, vendorName },
+      autoConnect: true,
+    });
+  }
+  return vendorSocket;
+}
+
+export function disconnectVendorSocket() {
+  if (vendorSocket) { vendorSocket.disconnect(); vendorSocket = null; }
+}
+
 export function disconnectVisitorSocket() {
   if (visitorSocket) {
     visitorSocket.disconnect();

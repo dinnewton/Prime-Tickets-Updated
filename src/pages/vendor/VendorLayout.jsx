@@ -4,6 +4,7 @@ import {
   Ticket, LayoutDashboard, CalendarDays, Plus, LogOut, Menu, Bell, ChevronDown,
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
+import VendorChatWidget from '../../components/chat/VendorChatWidget';
 
 const navItems = [
   { to: '/vendor', icon: LayoutDashboard, label: 'Dashboard', end: true },
@@ -107,6 +108,8 @@ export default function VendorLayout() {
           <Outlet />
         </main>
       </div>
+
+      <VendorChatWidget />
     </div>
   );
 }
