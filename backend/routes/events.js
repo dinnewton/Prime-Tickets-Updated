@@ -2,10 +2,13 @@ const router = require('express').Router();
 const db = require('../db/store');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 
-// GET /api/events — public, supports ?category=&city=&search=
+// GET /api/events — public, supports ?category=&city=&search=&featured=
 router.get('/', (req, res) => {
   let list = db.getEvents();
   const { category, city, search, featured } = req.query;
+
+  // Hide events admin removed from homepage (unless fetching featured for hero)
+  if (featured !== 'true') list = list.filter((e) => !e.hiddenFromHome);
 
   if (category && category !== 'All') list = list.filter((e) => e.category === category);
   if (city) list = list.filter((e) => e.city.toLowerCase() === city.toLowerCase());
@@ -21,6 +24,15 @@ router.get('/', (req, res) => {
     );
   }
 
+  // Sort by priority descending (higher priority appears first)
+  list.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+
+  res.json(list);
+});
+
+// GET /api/events/admin/all — admin only, returns all events including hidden, sorted by priority
+router.get('/admin/all', authMiddleware, requireRole('admin'), (req, res) => {
+  const list = [...db.getEvents()].sort((a, b) => (b.priority || 0) - (a.priority || 0));
   res.json(list);
 });
 

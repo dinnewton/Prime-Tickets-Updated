@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, ChevronLeft, ChevronRight, Flame, ArrowRight } from 'lucide-react';
 import { getFeaturedEvents } from '../../data/events';
+import { eventsApi } from '../../services/api';
 
 function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-ZA', {
@@ -13,9 +14,15 @@ function formatDate(dateStr) {
 }
 
 export default function HeroSection() {
-  const featured = getFeaturedEvents();
+  const [featured, setFeatured] = useState(getFeaturedEvents());
   const [current, setCurrent] = useState(0);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    eventsApi.list({ featured: 'true' })
+      .then((data) => { if (data.length) setFeatured(data); })
+      .catch(() => {});
+  }, []);
 
   // Auto-advance every 5 seconds
   useEffect(() => {

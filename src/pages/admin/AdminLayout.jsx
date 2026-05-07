@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
 import {
   Ticket, LayoutDashboard, CalendarDays, Building2, Users,
-  LogOut, Menu, X, Bell, ChevronDown, MessageCircle,
+  LogOut, Menu, X, Bell, ChevronDown, MessageCircle, LayoutGrid,
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
   { to: '/admin/events', icon: CalendarDays, label: 'Events' },
+  { to: '/admin/homepage', icon: LayoutGrid, label: 'Homepage' },
   { to: '/admin/vendors', icon: Building2, label: 'Vendors' },
   { to: '/admin/users', icon: Users, label: 'Users' },
   { to: '/admin/chat', icon: MessageCircle, label: 'Live Chat' },

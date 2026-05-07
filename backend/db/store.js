@@ -346,7 +346,7 @@ const db = {
   getEventById:       (id)       => events.find((e) => e.id === id),
   getEventsByVendor:  (vendorId) => events.filter((e) => e.vendorId === vendorId),
   createEvent: (data) => {
-    const event = { id: uuidv4(), soldTickets: 0, createdAt: new Date().toISOString().split('T')[0], status: 'on_sale', featured: false, ...data };
+    const event = { id: uuidv4(), soldTickets: 0, createdAt: new Date().toISOString().split('T')[0], status: 'on_sale', featured: false, priority: 0, hiddenFromHome: false, ...data };
     events.push(event);
     save();
     return event;
