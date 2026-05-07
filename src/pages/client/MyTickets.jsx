@@ -208,7 +208,7 @@ export default function MyTickets() {
           ) : (
             <form onSubmit={submitSell} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Your asking price (R)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Your asking price (Ksh)</label>
                 <input
                   type="number"
                   required

@@ -106,7 +106,7 @@ export default function EventCard({ event }) {
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">From</p>
             <p className="text-2xl font-black text-gray-900">
-              R{event.price.toLocaleString()}
+              Ksh {event.price.toLocaleString()}
             </p>
           </div>
           <button className="btn-primary !py-2.5 !px-5 !text-sm">
