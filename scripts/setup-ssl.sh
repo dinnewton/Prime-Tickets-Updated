@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run this ONCE on the Digital Ocean droplet to get a free Let's Encrypt cert
+# Run this ONCE on the server to get a free Let's Encrypt cert
 # and switch Cloudflare to Full SSL (not Flexible).
 #
 # Prerequisites:
@@ -7,7 +7,7 @@
 #   - DNS is pointing to this server (primeticketsoko.com resolves here)
 #
 # Usage:
-#   ssh root@188.166.155.26
+#   ssh root@YOUR_SERVER_IP
 #   bash /var/www/primetickets/scripts/setup-ssl.sh
 
 set -e

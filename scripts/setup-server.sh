@@ -1,12 +1,15 @@
 #!/bin/bash
 # ============================================================
-# PrimeTickets — Digital Ocean Droplet Setup Script
-# Run as root on a fresh Ubuntu 22.04 Droplet
-# Usage: bash setup-server.sh yourdomain.com
+# PrimeTickets — Server Setup Script (Contabo, Digital Ocean, any VPS)
+# Run as root on a fresh Ubuntu 22.04 / 24.04 server
+# Usage: bash setup-server.sh yourdomain.com [--no-ssl]
+#   --no-ssl  skip the certificate step (use when DNS does not point
+#             here yet; run scripts/setup-ssl.sh after switching DNS)
 # ============================================================
 set -e
 
 DOMAIN=${1:-"yourdomain.com"}
+NO_SSL=${2:-}
 APP_DIR="/var/www/primetickets"
 REPO="https://github.com/dinnewton/Prime-Tickets-Updated.git"
 
@@ -106,9 +109,13 @@ nginx -t && systemctl reload nginx
 echo "      Nginx configured."
 
 # ─── 9. SSL certificate ──────────────────────────────────────
-echo "[9/9] Obtaining SSL certificate..."
-certbot --nginx -d "$DOMAIN" -d "www.$DOMAIN" --non-interactive --agree-tos --email "admin@$DOMAIN" --redirect
-echo "      HTTPS enabled."
+if [ "$NO_SSL" = "--no-ssl" ]; then
+  echo "[9/9] Skipping SSL (--no-ssl). Run scripts/setup-ssl.sh once DNS points here."
+else
+  echo "[9/9] Obtaining SSL certificate..."
+  certbot --nginx -d "$DOMAIN" -d "www.$DOMAIN" --non-interactive --agree-tos --email "admin@$DOMAIN" --redirect
+  echo "      HTTPS enabled."
+fi
 
 # ─── Start app ───────────────────────────────────────────────
 echo ""
