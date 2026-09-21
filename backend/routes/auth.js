@@ -2,6 +2,7 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../db/store');
+const { sendPasswordResetEmail, SITE_URL } = require('../services/notifications');
 
 function signToken(payload) {
   return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -48,6 +49,53 @@ router.post('/vendor/login', (req, res) => {
 
   const token = signToken({ id: vendor.id, email: vendor.email, role: 'vendor', name: vendor.name });
   res.json({ token, vendor: safeUser(vendor) });
+});
+
+// ─── Password reset ───────────────────────────────────────────────────────────
+const lastResetEmail = new Map(); // email → time last sent, to stop inbox flooding
+const RESET_RESENT_AFTER_MS = 2 * 60 * 1000;
+const GENERIC_RESET_REPLY = { message: 'If an account exists for that email, we have sent a link to reset the password.' };
+
+// POST /api/auth/forgot-password { email } — same reply whether or not the account exists
+router.post('/forgot-password', async (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  if (!email.includes('@')) return res.status(400).json({ message: 'Enter a valid email address' });
+
+  const last = lastResetEmail.get(email);
+  if (last && Date.now() - last < RESET_RESENT_AFTER_MS) return res.json(GENERIC_RESET_REPLY);
+
+  const accounts = [
+    ...(db.getUserByEmail(email) ? [{ kind: 'user', account: db.getUserByEmail(email) }] : []),
+    ...(db.getVendorByEmail(email) ? [{ kind: 'vendor', account: db.getVendorByEmail(email) }] : []),
+  ];
+  if (accounts.length) lastResetEmail.set(email, Date.now());
+
+  for (const { kind, account } of accounts) {
+    const token = db.createPasswordReset({ kind, accountId: account.id });
+    const link = `${SITE_URL}/reset-password?token=${encodeURIComponent(token)}`;
+    sendPasswordResetEmail({ to: account.email, name: account.ownerName || account.name, link })
+      .catch((e) => console.error('[Auth] Reset email failed:', e.message));
+  }
+  res.json(GENERIC_RESET_REPLY);
+});
+
+// POST /api/auth/reset-password { token, password }
+router.post('/reset-password', (req, res) => {
+  const { token, password } = req.body || {};
+  if (!password || String(password).length < 8) {
+    return res.status(400).json({ message: 'Password must be at least 8 characters' });
+  }
+  const reset = db.consumePasswordReset(token);
+  if (!reset) {
+    return res.status(400).json({ message: 'This reset link is invalid or has expired. Please request a new one.' });
+  }
+  const update = { password: bcrypt.hashSync(String(password), 10), passwordChangedAt: Date.now() };
+  const updated = reset.kind === 'vendor'
+    ? db.updateVendor(reset.accountId, update)
+    : db.updateUser(reset.accountId, update);
+  if (!updated) return res.status(400).json({ message: 'Account no longer exists' });
+
+  res.json({ message: 'Password updated. You can now sign in.', role: reset.kind === 'vendor' ? 'vendor' : updated.role });
 });
 
 // POST /api/auth/register — new client account

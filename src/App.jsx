@@ -29,6 +29,8 @@ import AdminUsers from './pages/admin/Users';
 // Vendor pages
 import VendorLayout from './pages/vendor/VendorLayout';
 import CheckIn from './pages/checkin/CheckIn';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import VendorDashboard from './pages/vendor/Dashboard';
 import VendorEvents from './pages/vendor/Events';
 import CreateEvent from './pages/vendor/CreateEvent';
@@ -81,6 +83,8 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/vendor/register" element={<VendorRegister />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Hidden Admin Login — not linked from anywhere public */}
         <Route path="/secure/admin/login" element={<AdminLogin />} />

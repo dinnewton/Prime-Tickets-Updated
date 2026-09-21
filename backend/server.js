@@ -154,6 +154,7 @@ app.set('io', io);
 const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false, skip: (req) => req.path.startsWith('/checkin') });
 const checkinLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 3000, standardHeaders: true, legacyHeaders: false });
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { message: 'Too many login attempts, try again in 15 minutes' } });
+const resetLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: { message: 'Too many password reset attempts, try again in 15 minutes' } });
 const stkLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: { message: 'Too many payment requests, try again in 15 minutes' } });
 
 // ─── Middleware ────────────────────────────────────────────────────────────────
@@ -164,6 +165,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/api/', apiLimiter);
 app.use('/api/auth/login', loginLimiter);
+app.use(['/api/auth/forgot-password', '/api/auth/reset-password'], resetLimiter);
 app.use('/api/payments/mpesa/stk-push', stkLimiter);
 app.use('/api/checkin', checkinLimiter);
 

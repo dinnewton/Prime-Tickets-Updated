@@ -294,4 +294,34 @@ async function sendTicketConfirmation(payment) {
   await Promise.all(tasks);
 }
 
-module.exports = { sendTicketConfirmation, sendMail, emailConfigured };
+// ─── Password reset ───────────────────────────────────────────────────────────
+
+async function sendPasswordResetEmail({ to, name, link }) {
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:'Segoe UI',Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:40px 20px"><tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden">
+      <tr><td style="background:#1f2328;padding:28px 40px;text-align:center">
+        <h1 style="margin:0;color:#e2a47f;font-size:26px;font-weight:900;letter-spacing:2px">PRIME</h1>
+        <p style="margin:2px 0 0;color:#e2a47f;font-size:11px;letter-spacing:6px">TICKETS</p>
+      </td></tr>
+      <tr><td style="padding:32px 40px">
+        <h2 style="margin:0 0 12px;color:#1a1a2e;font-size:20px">Reset your password</h2>
+        <p style="color:#444;line-height:1.6;margin:0 0 24px">Hi ${esc(name || 'there')}, we received a request to reset the password for your PrimeTickets account. Click the button below to choose a new one.</p>
+        <p style="text-align:center;margin:0 0 24px">
+          <a href="${esc(link)}" style="display:inline-block;background:#1f2328;color:#fff;text-decoration:none;font-weight:700;padding:14px 28px;border-radius:10px">Choose a new password</a>
+        </p>
+        <p style="color:#888;font-size:13px;line-height:1.6;margin:0">This link works once and expires in 1 hour. If you didn't ask for this, you can ignore this email — your password stays the same.</p>
+      </td></tr>
+      <tr><td style="background:#f9fafb;padding:20px 40px;text-align:center;border-top:1px solid #f0f0f0">
+        <p style="margin:0;color:#999;font-size:12px"><a href="${SITE_URL}" style="color:#9a5332;text-decoration:none">primeticketsoko.com</a></p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
+  const text = `Reset your PrimeTickets password\n\nOpen this link to choose a new password (works once, expires in 1 hour):\n${link}\n\nIf you didn't ask for this, ignore this email — your password stays the same.`;
+  return sendMail({ to, subject: 'Reset your PrimeTickets password', html, text });
+}
+
+module.exports = { sendTicketConfirmation, sendMail, emailConfigured, sendPasswordResetEmail, SITE_URL };

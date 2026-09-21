@@ -296,12 +296,15 @@ if (!_data.connections)     _data.connections = [];
 if (!_data.directMessages)  _data.directMessages = [];
 if (!_data.footerSettings)  _data.footerSettings = { ...defaultFooterSettings };
 if (!_data.notifications)   _data.notifications = [];
+// Kept apart from user/vendor records so reset tokens can never be sent to a browser
+if (!_data.passwordResets)  _data.passwordResets = [];
 
 // Unguessable code printed in each ticket's QR. Transfers and resales create
 // a new booking, so the previous owner's code stops being valid.
 function newTicketCode() {
   return crypto.randomBytes(16).toString('base64url');
 }
+const hashToken = (t) => crypto.createHash('sha256').update(t).digest('hex');
 let backfilled = false;
 for (const b of _data.bookings) {
   if (!b.ticketCode) { b.ticketCode = newTicketCode(); backfilled = true; }
@@ -434,6 +437,26 @@ const db = {
   getBookingsByUser: (userId) => bookings.filter((b) => b.userId === userId),
   getBookingById:    (id)     => bookings.find((b) => b.id === id),
   getBookingByTicketCode: (code) => bookings.find((b) => b.ticketCode === code),
+
+  // Password resets — only a SHA-256 hash of the emailed token is stored
+  createPasswordReset: ({ kind, accountId }, ttlMs = 60 * 60 * 1000) => {
+    const token = crypto.randomBytes(32).toString('base64url');
+    const now = Date.now();
+    _data.passwordResets = _data.passwordResets.filter(
+      (r) => r.expiresAt > now && !(r.kind === kind && r.accountId === accountId)
+    );
+    _data.passwordResets.push({ tokenHash: hashToken(token), kind, accountId, expiresAt: now + ttlMs });
+    save();
+    return token;
+  },
+  // Single use: returns { kind, accountId } and deletes the reset, or null
+  consumePasswordReset: (token) => {
+    const hash = hashToken(String(token || ''));
+    const reset = _data.passwordResets.find((r) => r.tokenHash === hash && r.expiresAt > Date.now());
+    _data.passwordResets = _data.passwordResets.filter((r) => r.tokenHash !== hash);
+    save();
+    return reset ? { kind: reset.kind, accountId: reset.accountId } : null;
+  },
   updateBooking: (id, updates) => {
     const idx = bookings.findIndex((b) => b.id === id);
     if (idx === -1) return null;

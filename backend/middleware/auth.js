@@ -7,13 +7,24 @@ function authMiddleware(req, res, next) {
   }
 
   const token = authHeader.split(' ')[1];
+  let decoded;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // { id, email, role, name }
-    next();
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
   } catch {
     return res.status(401).json({ message: 'Invalid or expired token' });
   }
+  if (issuedBeforePasswordChange(decoded)) {
+    return res.status(401).json({ message: 'Your password was changed. Please sign in again.' });
+  }
+  req.user = decoded; // { id, email, role, name }
+  next();
+}
+
+// A password reset signs out every session that existed before it
+function issuedBeforePasswordChange(decoded) {
+  const db = require('../db/store');
+  const account = decoded.role === 'vendor' ? db.getVendorById(decoded.id) : db.getUserById(decoded.id);
+  return !!account?.passwordChangedAt && decoded.iat < Math.floor(account.passwordChangedAt / 1000);
 }
 
 // Sets req.user when a valid token is sent; continues as a guest otherwise
