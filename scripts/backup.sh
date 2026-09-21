@@ -17,7 +17,7 @@ STAMP=$(date +%Y%m%d-%H%M%S)
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
-mkdir -p "$BACKUP_DIR"
+mkdir -p "$BACKUP_DIR" "$APP_DIR/backend/uploads"
 chmod 700 "$BACKUP_DIR"   # archives contain customer data and secrets
 
 # The app writes data.json atomically (tmp file + rename), so a plain copy

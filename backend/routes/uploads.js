@@ -1,11 +1,16 @@
 const router = require('express').Router();
 const multer = require('multer');
+const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 
+// uploads/ is not in git, so create it on a fresh server — multer won't
+const UPLOAD_DIR = path.join(__dirname, '../uploads/events');
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, path.join(__dirname, '../uploads/events')),
+  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `evt_${uuidv4()}${ext}`);
