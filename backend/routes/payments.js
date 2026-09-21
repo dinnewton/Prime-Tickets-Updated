@@ -98,9 +98,10 @@ router.post('/mpesa/callback', (req, res) => {
         phoneUsed: meta.PhoneNumber,
       });
 
-      // Create booking records
+      // Create booking records (kept so the email can include each ticket's QR)
+      const created = [];
       payment.cart.forEach((item) => {
-        db.createBooking({
+        created.push(db.createBooking({
           userId: payment.userId || 'guest',
           eventId: item.eventId,
           eventTitle: item.eventTitle,
@@ -112,7 +113,7 @@ router.post('/mpesa/callback', (req, res) => {
           orderRef: payment.orderRef,
           customerName: payment.customerName,
           customerEmail: payment.customerEmail,
-        });
+        }));
 
         // Update event sold tickets count
         const event = db.getEventById(item.eventId);
@@ -141,7 +142,7 @@ router.post('/mpesa/callback', (req, res) => {
           // Mark seller's original booking as sold
           db.updateBooking(listing.bookingId, { status: 'sold', soldTo: payment.buyerId });
           // Create booking for buyer
-          db.createBooking({
+          created.push(db.createBooking({
             userId: payment.buyerId,
             eventId: listing.eventId,
             eventTitle: listing.eventTitle,
@@ -158,7 +159,7 @@ router.post('/mpesa/callback', (req, res) => {
             customerName: payment.buyerName,
             customerEmail: payment.buyerEmail,
             purchasedViaResale: true,
-          });
+          }));
           db.updateListing(listing.id, { status: 'sold', soldTo: payment.buyerId, soldAt: new Date().toISOString() });
         }
       }
@@ -186,6 +187,7 @@ router.post('/mpesa/callback', (req, res) => {
         mpesaCode: meta.MpesaReceiptNumber,
         amount: payment.amount,
         cart: payment.cart,
+        bookings: created,
       }).catch((err) => console.error('[Notifications] Failed:', err.message));
     } else {
       const statusMap = {

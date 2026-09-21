@@ -3,13 +3,34 @@
  * All channels are optional: missing credentials are logged but never crash the app.
  */
 const nodemailer = require('nodemailer');
+const QRCode = require('qrcode');
+
+const SITE_URL = process.env.SITE_URL || 'https://primeticketsoko.com';
 
 // ─── Email ────────────────────────────────────────────────────────────────────
 
 // Names and titles come from user input — never put them in HTML unescaped
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-function buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart, eventDate }) {
+// One block per booking with its QR (an inline attachment — Gmail blocks data: images)
+function buildTicketsHtml(tickets) {
+  if (!tickets.length) return '';
+  return `
+        <tr><td style="padding:0 40px 8px">
+          <h3 style="margin:0 0 12px;color:#1a1a2e;font-size:15px">Your entry QR code${tickets.length > 1 ? 's' : ''}</h3>
+          ${tickets.map((t) => `
+          <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eee;border-radius:10px;margin-bottom:12px">
+            <tr><td style="padding:16px;text-align:center">
+              <strong style="color:#1a1a2e">${esc(t.eventTitle)}</strong><br>
+              <span style="color:#666;font-size:13px">${esc(t.ticketType?.toUpperCase())} · admits ${t.quantity} ${t.quantity === 1 ? 'person' : 'people'}</span><br>
+              <img src="cid:${t.cid}" width="200" height="200" alt="Ticket QR code" style="margin:12px auto;display:block">
+              <span style="color:#999;font-size:11px;word-break:break-all">Code: ${esc(t.ticketCode)}</span>
+            </td></tr>
+          </table>`).join('')}
+        </td></tr>`;
+}
+
+function buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart, tickets = [] }) {
   const rows = cart
     .map(
       (item) => `
@@ -34,9 +55,10 @@ function buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart, event
       <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">
 
         <!-- Header -->
-        <tr><td style="background:linear-gradient(135deg,#7C3AED,#5b21b6);padding:32px 40px;text-align:center">
-          <h1 style="margin:0;color:#fff;font-size:26px;font-weight:800;letter-spacing:-0.5px">PrimeTickets</h1>
-          <p style="margin:8px 0 0;color:rgba(255,255,255,.8);font-size:14px">Your booking is confirmed!</p>
+        <tr><td style="background:#1f2328;padding:32px 40px;text-align:center">
+          <h1 style="margin:0;color:#e2a47f;font-size:28px;font-weight:900;letter-spacing:2px">PRIME</h1>
+          <p style="margin:2px 0 0;color:#e2a47f;font-size:11px;letter-spacing:6px">TICKETS</p>
+          <p style="margin:14px 0 0;color:rgba(255,255,255,.8);font-size:14px">Your booking is confirmed!</p>
         </td></tr>
 
         <!-- Success badge -->
@@ -50,10 +72,10 @@ function buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart, event
 
         <!-- Order details -->
         <tr><td style="padding:24px 40px">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:#faf5ff;border-radius:8px;padding:20px;margin-bottom:24px">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#fbf5f1;border-radius:8px;padding:20px;margin-bottom:24px">
             <tr>
               <td style="color:#666;font-size:13px">Booking Reference</td>
-              <td style="text-align:right;font-weight:700;color:#7C3AED;font-size:16px;letter-spacing:1px">${esc(orderRef)}</td>
+              <td style="text-align:right;font-weight:700;color:#9a5332;font-size:16px;letter-spacing:1px">${esc(orderRef)}</td>
             </tr>
             ${mpesaCode ? `<tr><td style="color:#666;font-size:13px;padding-top:8px">M-Pesa Code</td><td style="text-align:right;font-weight:600;padding-top:8px">${esc(mpesaCode)}</td></tr>` : ''}
             <tr>
@@ -69,11 +91,14 @@ function buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart, event
           </table>
         </td></tr>
 
+        ${buildTicketsHtml(tickets)}
+
         <!-- Instructions -->
         <tr><td style="padding:0 40px 24px">
           <div style="background:#fffbeb;border-left:4px solid #F59E0B;padding:16px;border-radius:0 8px 8px 0">
             <p style="margin:0;color:#92400e;font-size:13px;line-height:1.6">
-              <strong>What to bring:</strong> Show this email or your booking reference <strong>${esc(orderRef)}</strong> at the venue entrance. Arrive 30 minutes before the event starts.
+              <strong>What to bring:</strong> ${tickets.length ? 'Show the QR code above' : `Show this email or your booking reference <strong>${esc(orderRef)}</strong>`} at the venue entrance.
+              Each code can only be scanned in once — don't share it or post screenshots. Arrive 30 minutes before the event starts.
             </p>
           </div>
         </td></tr>
@@ -82,7 +107,7 @@ function buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart, event
         <tr><td style="background:#f9fafb;padding:24px 40px;text-align:center;border-top:1px solid #f0f0f0">
           <p style="margin:0;color:#999;font-size:12px">
             PrimeTickets · Questions? Email us at support@primeticketsoko.com<br>
-            <a href="https://primeticketsoko.com" style="color:#7C3AED;text-decoration:none">primeticketsoko.com</a>
+            <a href="https://primeticketsoko.com" style="color:#9a5332;text-decoration:none">primeticketsoko.com</a>
           </p>
         </td></tr>
 
@@ -113,7 +138,7 @@ function getTransporter() {
  * MAIL_FROM is the sender (e.g. noreply@primeticketsoko.com). With Gmail it
  * can be left unset — Gmail only sends as the account itself (SMTP_USER).
  */
-async function sendMail({ to, subject, html, text }) {
+async function sendMail({ to, subject, html, text, attachments }) {
   if (!emailConfigured()) {
     console.log(`[Notifications] Email to ${to} skipped — SMTP_USER / SMTP_PASS not configured`);
     return false;
@@ -126,18 +151,28 @@ async function sendMail({ to, subject, html, text }) {
     subject,
     html,
     text,
+    attachments,
     ...(process.env.MAIL_REPLY_TO && { replyTo: process.env.MAIL_REPLY_TO }),
   });
   console.log(`[Notifications] Email "${subject}" sent to ${to}`);
   return true;
 }
 
-async function sendEmail({ customerEmail, customerName, orderRef, mpesaCode, amount, cart }) {
+async function sendEmail({ customerEmail, customerName, orderRef, mpesaCode, amount, cart, bookings = [] }) {
+  // Same check-in link as the QR in My Tickets
+  const tickets = await Promise.all(
+    bookings.filter((b) => b.ticketCode).map(async (b, i) => ({
+      ...b,
+      cid: `ticket-qr-${i}@primetickets`,
+      png: await QRCode.toBuffer(`${SITE_URL}/checkin?code=${encodeURIComponent(b.ticketCode)}`, { width: 400, margin: 1 }),
+    }))
+  );
   await sendMail({
     to: customerEmail,
     subject: `Your tickets are confirmed — ${orderRef}`,
-    html: buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart }),
+    html: buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart, tickets }),
     text: buildSmsText({ customerName, orderRef, mpesaCode, amount, cart }),
+    attachments: tickets.map((t, i) => ({ filename: `ticket-${orderRef}-${i + 1}.png`, content: t.png, cid: t.cid })),
   });
 }
 
@@ -231,13 +266,13 @@ function normalisePhone(raw) {
 // ─── Main entry: fire all channels in parallel ────────────────────────────────
 
 async function sendTicketConfirmation(payment) {
-  const { customerEmail, customerName, phone, orderRef, mpesaCode, amount, cart } = payment;
+  const { customerEmail, customerName, phone, orderRef, mpesaCode, amount, cart, bookings } = payment;
 
   const tasks = [];
 
   if (customerEmail) {
     tasks.push(
-      sendEmail({ customerEmail, customerName, orderRef, mpesaCode, amount, cart }).catch((e) =>
+      sendEmail({ customerEmail, customerName, orderRef, mpesaCode, amount, cart, bookings }).catch((e) =>
         console.error('[Notifications] Email error:', e.message)
       )
     );
