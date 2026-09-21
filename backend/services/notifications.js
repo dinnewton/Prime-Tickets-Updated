@@ -6,14 +6,17 @@ const nodemailer = require('nodemailer');
 
 // ─── Email ────────────────────────────────────────────────────────────────────
 
+// Names and titles come from user input — never put them in HTML unescaped
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 function buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart, eventDate }) {
   const rows = cart
     .map(
       (item) => `
       <tr>
         <td style="padding:10px 0;border-bottom:1px solid #f0f0f0">
-          <strong>${item.eventTitle}</strong><br>
-          <span style="color:#666;font-size:13px">${item.ticketType?.toUpperCase()} · ${item.quantity} ticket${item.quantity > 1 ? 's' : ''}</span>
+          <strong>${esc(item.eventTitle)}</strong><br>
+          <span style="color:#666;font-size:13px">${esc(item.ticketType?.toUpperCase())} · ${item.quantity} ticket${item.quantity > 1 ? 's' : ''}</span>
         </td>
         <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:600">
           Ksh ${(item.price * item.quantity).toFixed(2)}
@@ -41,7 +44,7 @@ function buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart, event
           <div style="display:inline-block;background:#ecfdf5;border:2px solid #10b981;border-radius:50px;padding:10px 24px">
             <span style="color:#10b981;font-weight:700;font-size:15px">✓ Payment Successful</span>
           </div>
-          <h2 style="margin:20px 0 4px;color:#1a1a2e;font-size:22px">Hi ${customerName || 'there'}!</h2>
+          <h2 style="margin:20px 0 4px;color:#1a1a2e;font-size:22px">Hi ${esc(customerName || 'there')}!</h2>
           <p style="color:#666;margin:0 0 8px">Your tickets are confirmed and ready.</p>
         </td></tr>
 
@@ -50,9 +53,9 @@ function buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart, event
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#faf5ff;border-radius:8px;padding:20px;margin-bottom:24px">
             <tr>
               <td style="color:#666;font-size:13px">Booking Reference</td>
-              <td style="text-align:right;font-weight:700;color:#7C3AED;font-size:16px;letter-spacing:1px">${orderRef}</td>
+              <td style="text-align:right;font-weight:700;color:#7C3AED;font-size:16px;letter-spacing:1px">${esc(orderRef)}</td>
             </tr>
-            ${mpesaCode ? `<tr><td style="color:#666;font-size:13px;padding-top:8px">M-Pesa Code</td><td style="text-align:right;font-weight:600;padding-top:8px">${mpesaCode}</td></tr>` : ''}
+            ${mpesaCode ? `<tr><td style="color:#666;font-size:13px;padding-top:8px">M-Pesa Code</td><td style="text-align:right;font-weight:600;padding-top:8px">${esc(mpesaCode)}</td></tr>` : ''}
             <tr>
               <td style="color:#666;font-size:13px;padding-top:8px">Total Paid</td>
               <td style="text-align:right;font-weight:700;font-size:18px;color:#1a1a2e;padding-top:8px">Ksh ${Number(amount).toFixed(2)}</td>
@@ -70,7 +73,7 @@ function buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart, event
         <tr><td style="padding:0 40px 24px">
           <div style="background:#fffbeb;border-left:4px solid #F59E0B;padding:16px;border-radius:0 8px 8px 0">
             <p style="margin:0;color:#92400e;font-size:13px;line-height:1.6">
-              <strong>What to bring:</strong> Show this email or your booking reference <strong>${orderRef}</strong> at the venue entrance. Arrive 30 minutes before the event starts.
+              <strong>What to bring:</strong> Show this email or your booking reference <strong>${esc(orderRef)}</strong> at the venue entrance. Arrive 30 minutes before the event starts.
             </p>
           </div>
         </td></tr>
@@ -90,27 +93,52 @@ function buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart, event
 </html>`;
 }
 
-async function sendEmail({ customerEmail, customerName, orderRef, mpesaCode, amount, cart }) {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.log('[Notifications] Email skipped — SMTP_USER / SMTP_PASS not configured');
-    return;
+const emailConfigured = () => !!(process.env.SMTP_USER && process.env.SMTP_PASS);
+
+let transporter = null;
+function getTransporter() {
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: Number(process.env.SMTP_PORT) || 587,
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    });
   }
+  return transporter;
+}
 
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+/**
+ * Send one email from the site's no-reply address.
+ * MAIL_FROM is the sender (e.g. noreply@primeticketsoko.com). With Gmail it
+ * can be left unset — Gmail only sends as the account itself (SMTP_USER).
+ */
+async function sendMail({ to, subject, html, text }) {
+  if (!emailConfigured()) {
+    console.log(`[Notifications] Email to ${to} skipped — SMTP_USER / SMTP_PASS not configured`);
+    return false;
+  }
+  const fromName = process.env.MAIL_FROM_NAME || 'PrimeTickets';
+  const fromAddr = process.env.MAIL_FROM || process.env.SMTP_USER;
+  await getTransporter().sendMail({
+    from: `"${fromName}" <${fromAddr}>`,
+    to,
+    subject,
+    html,
+    text,
+    ...(process.env.MAIL_REPLY_TO && { replyTo: process.env.MAIL_REPLY_TO }),
   });
+  console.log(`[Notifications] Email "${subject}" sent to ${to}`);
+  return true;
+}
 
-  await transporter.sendMail({
-    from: `"PrimeTickets" <${process.env.SMTP_USER}>`,
+async function sendEmail({ customerEmail, customerName, orderRef, mpesaCode, amount, cart }) {
+  await sendMail({
     to: customerEmail,
     subject: `Your tickets are confirmed — ${orderRef}`,
     html: buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart }),
+    text: buildSmsText({ customerName, orderRef, mpesaCode, amount, cart }),
   });
-
-  console.log(`[Notifications] Email sent to ${customerEmail}`);
 }
 
 // ─── WhatsApp & SMS via Twilio ────────────────────────────────────────────────
@@ -231,4 +259,4 @@ async function sendTicketConfirmation(payment) {
   await Promise.all(tasks);
 }
 
-module.exports = { sendTicketConfirmation };
+module.exports = { sendTicketConfirmation, sendMail, emailConfigured };
