@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Ticket, ArrowRightLeft, Tag, X, CheckCircle, AlertCircle, Clock, Loader2, Wifi } from 'lucide-react';
+import { Ticket, ArrowRightLeft, Tag, X, CheckCircle, AlertCircle, Clock, Loader2, Wifi, QrCode } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
+import TicketQR from '../../components/tickets/TicketQR';
 import useAuthStore from '../../store/authStore';
 import { bookingsApi, transfersApi, marketApi } from '../../services/api';
 
@@ -31,6 +32,8 @@ export default function MyTickets() {
   const [askingPrice, setAskingPrice] = useState('');
   const [sellLoading, setSellLoading] = useState(false);
   const [sellMsg, setSellMsg] = useState(null);
+
+  const [qrModal, setQrModal] = useState(null); // booking
 
   useEffect(() => {
     if (!isAuthenticated) { navigate('/login'); return; }
@@ -143,6 +146,7 @@ export default function MyTickets() {
                   onTransfer={() => openTransfer(b)}
                   onSell={() => openSell(b)}
                   onCancelListing={() => cancelListing(b)}
+                  onShowQR={() => setQrModal(b)}
                 />
               ))}
             </section>
@@ -194,6 +198,30 @@ export default function MyTickets() {
         </Modal>
       )}
 
+      {/* Ticket QR Modal */}
+      {qrModal && (
+        <Modal title="Your Ticket" onClose={() => setQrModal(null)}>
+          <div className="text-center">
+            <p className="font-bold text-gray-900">{qrModal.eventTitle}</p>
+            <p className="text-sm text-gray-500 mb-4">
+              {qrModal.ticketType?.toUpperCase()} · admits {qrModal.quantity} {qrModal.quantity === 1 ? 'person' : 'people'}
+            </p>
+            <div className="inline-block p-3 bg-white border border-gray-200 rounded-2xl">
+              <TicketQR ticketCode={qrModal.ticketCode} size={240} />
+            </div>
+            {qrModal.checkedIn > 0 && (
+              <p className="mt-3 text-sm font-medium text-amber-600">
+                {qrModal.checkedIn} of {qrModal.quantity} already checked in
+              </p>
+            )}
+            <p className="mt-4 text-xs text-gray-500 leading-relaxed">
+              Show this code at the entrance. Each ticket can only be scanned in once —
+              don't share screenshots of it. Ref: {qrModal.orderRef}
+            </p>
+          </div>
+        </Modal>
+      )}
+
       {/* Sell Modal */}
       {sellModal && (
         <Modal title="List for Resale" onClose={() => setSellModal(null)}>
@@ -231,7 +259,7 @@ export default function MyTickets() {
   );
 }
 
-function BookingCard({ booking, onTransfer, onSell, onCancelListing, readOnly }) {
+function BookingCard({ booking, onTransfer, onSell, onCancelListing, onShowQR, readOnly }) {
   const fmt = (d) => new Date(d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' });
   const isUpcoming = booking.eventDate && new Date(booking.eventDate) >= new Date();
 
@@ -268,7 +296,17 @@ function BookingCard({ booking, onTransfer, onSell, onCancelListing, readOnly })
           )}
         </div>
 
-        {!readOnly && booking.status === 'active' && isUpcoming && (
+        {!readOnly && booking.status === 'active' && booking.ticketCode && (
+          <button
+            onClick={onShowQR}
+            className="self-start flex items-center gap-2 text-sm font-semibold text-white bg-gray-900 hover:bg-gray-800 px-4 py-2 rounded-lg transition-colors"
+          >
+            <QrCode className="w-4 h-4" />
+            {booking.checkedIn >= booking.quantity ? 'Ticket used' : 'Show ticket QR'}
+          </button>
+        )}
+
+        {!readOnly && booking.status === 'active' && isUpcoming && !booking.checkedIn && (
           <div className="flex flex-wrap items-center gap-2 mt-1">
             <button onClick={onTransfer} className="flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-700 border border-primary-200 hover:border-primary-400 px-3 py-1.5 rounded-lg transition-all">
               <ArrowRightLeft className="w-3.5 h-3.5" /> Transfer

@@ -150,7 +150,9 @@ io.on('connection', (socket) => {
 app.set('io', io);
 
 // ─── Rate limiting ─────────────────────────────────────────────────────────────
-const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false });
+// Door scanning is one device making many requests, so it gets its own higher limit
+const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false, skip: (req) => req.path.startsWith('/checkin') });
+const checkinLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 3000, standardHeaders: true, legacyHeaders: false });
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { message: 'Too many login attempts, try again in 15 minutes' } });
 const stkLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: { message: 'Too many payment requests, try again in 15 minutes' } });
 
@@ -163,6 +165,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/', apiLimiter);
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/payments/mpesa/stk-push', stkLimiter);
+app.use('/api/checkin', checkinLimiter);
 
 // Guard against malformed URIs from security scanners (prevents crash-restart loops)
 app.use((req, res, next) => {
@@ -191,6 +194,7 @@ app.use('/api/market',    require('./routes/market'));
 app.use('/api/transfers', require('./routes/transfers'));
 app.use('/api/network',   require('./routes/network'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/checkin',   require('./routes/checkin'));
 
 app.get('/api/health', (_req, res) => {
   res.json({

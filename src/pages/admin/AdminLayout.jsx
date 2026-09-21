@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
 import { LayoutDashboard, CalendarDays, Building2, Users,
   LogOut, Menu, X, Bell, ChevronDown, MessageCircle, LayoutGrid, FileText,
-  ShoppingCart, UserPlus, CheckCheck,
+  ShoppingCart, UserPlus, CheckCheck, ScanLine,
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import { getAdminSocket } from '../../services/socket';
@@ -11,6 +11,7 @@ import Logo from '../../components/common/Logo';
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
   { to: '/admin/events', icon: CalendarDays, label: 'Events' },
+  { to: '/checkin', icon: ScanLine, label: 'Door Check-in' },
   { to: '/admin/homepage', icon: LayoutGrid, label: 'Homepage' },
   { to: '/admin/vendors', icon: Building2, label: 'Vendors' },
   { to: '/admin/users', icon: Users, label: 'Users' },

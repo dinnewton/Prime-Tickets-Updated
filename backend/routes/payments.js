@@ -2,14 +2,14 @@ const router = require('express').Router();
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db/store');
 const { stkPush, stkQuery } = require('../services/mpesa');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, optionalAuth } = require('../middleware/auth');
 const { sendTicketConfirmation } = require('../services/notifications');
 
 /**
  * POST /api/payments/mpesa/stk-push
  * Initiates an M-Pesa STK Push for the provided cart items
  */
-router.post('/mpesa/stk-push', async (req, res) => {
+router.post('/mpesa/stk-push', optionalAuth, async (req, res) => {
   const { phone, amount, cart, customerName, customerEmail } = req.body;
 
   if (!phone || !amount || !cart?.length) {
@@ -34,6 +34,8 @@ router.post('/mpesa/stk-push', async (req, res) => {
       checkoutRequestId: mpesaRes.CheckoutRequestID,
       merchantRequestId: mpesaRes.MerchantRequestID,
       orderRef,
+      // Logged-in buyer, so the tickets appear in their My Tickets
+      userId: req.user && req.user.role !== 'vendor' ? req.user.id : null,
       phone,
       amount,
       cart,

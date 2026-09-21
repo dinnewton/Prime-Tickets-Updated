@@ -5,6 +5,7 @@
  */
 const fs   = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
 
@@ -296,6 +297,18 @@ if (!_data.directMessages)  _data.directMessages = [];
 if (!_data.footerSettings)  _data.footerSettings = { ...defaultFooterSettings };
 if (!_data.notifications)   _data.notifications = [];
 
+// Unguessable code printed in each ticket's QR. Transfers and resales create
+// a new booking, so the previous owner's code stops being valid.
+function newTicketCode() {
+  return crypto.randomBytes(16).toString('base64url');
+}
+let backfilled = false;
+for (const b of _data.bookings) {
+  if (!b.ticketCode) { b.ticketCode = newTicketCode(); backfilled = true; }
+  if (b.checkedIn === undefined) b.checkedIn = 0;
+  if (!b.checkIns) b.checkIns = [];
+}
+
 // Live references — mutations to these are reflected in _data
 const users     = _data.users;
 const vendors   = _data.vendors;
@@ -319,8 +332,8 @@ function save() {
   }
 }
 
-// Persist seed data on first run
-if (!fs.existsSync(DATA_FILE)) save();
+// Persist seed data on first run, or ticket codes added to older bookings
+if (!fs.existsSync(DATA_FILE) || backfilled) save();
 
 // ─── STORE API ────────────────────────────────────────────────────────────────
 const db = {
@@ -408,7 +421,11 @@ const db = {
 
   // Bookings
   createBooking: (data) => {
-    const booking = { id: uuidv4(), createdAt: new Date().toISOString(), status: 'active', ...data };
+    const booking = {
+      id: uuidv4(), createdAt: new Date().toISOString(), status: 'active',
+      ticketCode: newTicketCode(), checkedIn: 0, checkIns: [],
+      ...data,
+    };
     bookings.push(booking);
     save();
     return booking;
@@ -416,6 +433,7 @@ const db = {
   getBookings:       ()       => bookings,
   getBookingsByUser: (userId) => bookings.filter((b) => b.userId === userId),
   getBookingById:    (id)     => bookings.find((b) => b.id === id),
+  getBookingByTicketCode: (code) => bookings.find((b) => b.ticketCode === code),
   updateBooking: (id, updates) => {
     const idx = bookings.findIndex((b) => b.id === id);
     if (idx === -1) return null;

@@ -19,6 +19,9 @@ router.post('/', authMiddleware, (req, res) => {
   const booking = db.getBookingById(bookingId);
   if (!booking) return res.status(404).json({ message: 'Booking not found' });
   if (booking.userId !== senderId) return res.status(403).json({ message: 'You do not own this booking' });
+  if (booking.checkedIn > 0) {
+    return res.status(400).json({ message: 'This ticket has already been used at the door and cannot be transferred' });
+  }
   if (booking.status !== 'active') {
     return res.status(400).json({ message: `Ticket is ${booking.status} and cannot be transferred` });
   }

@@ -33,6 +33,7 @@ async function request(method, path, body) {
   if (!res.ok) {
     const err = new Error(data.message || `HTTP ${res.status}`);
     err.status = res.status;
+    err.data = data;
     throw err;
   }
 
@@ -80,6 +81,12 @@ export const marketApi = {
   createListing: (data) => request('POST', '/market/list', data),
   cancelListing: (id) => request('DELETE', `/market/${id}`),
   buy: (id, phone) => request('POST', `/market/${id}/buy`, { phone }),
+};
+
+// ─── Door check-in (vendor / admin) ───────────────────────────────────────────
+export const checkinApi = {
+  lookup: (code) => request('GET', `/checkin/${encodeURIComponent(code)}`),
+  admit: (code, count) => request('POST', `/checkin/${encodeURIComponent(code)}`, count ? { count } : {}),
 };
 
 // ─── Transfers ────────────────────────────────────────────────────────────────

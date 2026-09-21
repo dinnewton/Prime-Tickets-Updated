@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
-import { LayoutDashboard, CalendarDays, Plus, LogOut, Menu, Bell, ChevronDown,
+import { LayoutDashboard, CalendarDays, Plus, ScanLine, LogOut, Menu, Bell, ChevronDown,
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import VendorChatWidget from '../../components/chat/VendorChatWidget';
@@ -10,6 +10,7 @@ const navItems = [
   { to: '/vendor', icon: LayoutDashboard, label: 'Dashboard', end: true },
   { to: '/vendor/events', icon: CalendarDays, label: 'My Events' },
   { to: '/vendor/events/create', icon: Plus, label: 'Create Event' },
+  { to: '/checkin', icon: ScanLine, label: 'Door Check-in' },
 ];
 
 export default function VendorLayout() {

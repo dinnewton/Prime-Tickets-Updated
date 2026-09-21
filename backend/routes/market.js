@@ -34,11 +34,14 @@ router.post('/list', authMiddleware, (req, res) => {
   if (booking.status !== 'active') {
     return res.status(400).json({ message: `Ticket is already ${booking.status} and cannot be listed` });
   }
+  if (booking.checkedIn > 0) {
+    return res.status(400).json({ message: 'This ticket has already been used at the door and cannot be resold' });
+  }
 
   // Cap resale price at 150 % of original to prevent price gouging
   const maxPrice = Math.ceil(booking.unitPrice * 1.5);
   if (askingPrice > maxPrice) {
-    return res.status(400).json({ message: `Asking price cannot exceed R${maxPrice} (150% of original price)` });
+    return res.status(400).json({ message: `Asking price cannot exceed Ksh ${maxPrice} (150% of original price)` });
   }
 
   const listing = db.createListing({

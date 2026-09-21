@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { CheckCircle, Download, Home, Ticket, Users, X, Wifi } from 'lucide-react';
+import { CheckCircle, Download, Home, Ticket, Users, X, Wifi, QrCode } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import useAuthStore from '../../store/authStore';
@@ -46,6 +46,18 @@ export default function Confirmation() {
             {state?.total && (
               <p className="text-gray-500 text-sm text-center">
                 Total paid: <span className="font-bold text-gray-900">Ksh {state.total.toLocaleString()}</span>
+              </p>
+            )}
+            {isAuthenticated ? (
+              <Link
+                to="/my-tickets"
+                className="mt-6 w-full flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3 rounded-xl transition-colors"
+              >
+                <QrCode className="w-5 h-5" /> View your ticket QR codes
+              </Link>
+            ) : (
+              <p className="mt-6 text-sm text-gray-500 text-center">
+                Keep your order reference — show it with your ID at the entrance.
               </p>
             )}
           </div>

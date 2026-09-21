@@ -28,6 +28,7 @@ import AdminUsers from './pages/admin/Users';
 
 // Vendor pages
 import VendorLayout from './pages/vendor/VendorLayout';
+import CheckIn from './pages/checkin/CheckIn';
 import VendorDashboard from './pages/vendor/Dashboard';
 import VendorEvents from './pages/vendor/Events';
 import CreateEvent from './pages/vendor/CreateEvent';
@@ -115,6 +116,16 @@ export default function App() {
           <Route path="events" element={<VendorEvents />} />
           <Route path="events/create" element={<CreateEvent />} />
         </Route>
+
+        {/* Door check-in — vendors (own events) and admins */}
+        <Route
+          path="/checkin"
+          element={
+            <RequireAuth allowedRoles={['vendor', 'admin']}>
+              <CheckIn />
+            </RequireAuth>
+          }
+        />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

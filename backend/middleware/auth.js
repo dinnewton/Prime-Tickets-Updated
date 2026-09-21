@@ -16,6 +16,15 @@ function authMiddleware(req, res, next) {
   }
 }
 
+// Sets req.user when a valid token is sent; continues as a guest otherwise
+function optionalAuth(req, _res, next) {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try { req.user = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET); } catch {}
+  }
+  next();
+}
+
 function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
@@ -26,4 +35,4 @@ function requireRole(...roles) {
   };
 }
 
-module.exports = { authMiddleware, requireRole };
+module.exports = { authMiddleware, optionalAuth, requireRole };
