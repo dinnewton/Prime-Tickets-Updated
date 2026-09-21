@@ -15,7 +15,10 @@ BACKUP_DIR="${BACKUP_DIR:-/var/backups/primetickets}"
 KEEP_DAYS="${KEEP_DAYS:-14}"
 STAMP=$(date +%Y%m%d-%H%M%S)
 WORK=$(mktemp -d)
-trap 'rm -rf "$WORK"' EXIT
+ARCHIVE="$BACKUP_DIR/primetickets-$STAMP.tar.gz"
+# Build under .part and rename only when complete, so a failed run never
+# leaves a broken archive that looks like a good backup.
+trap 'rm -rf "$WORK" "$ARCHIVE.part"' EXIT
 
 mkdir -p "$BACKUP_DIR" "$APP_DIR/backend/uploads"
 chmod 700 "$BACKUP_DIR"   # archives contain customer data and secrets
@@ -27,12 +30,12 @@ node -e "JSON.parse(require('fs').readFileSync('$WORK/data.json','utf8'))" \
   || { echo "$(date -Iseconds) ERROR: data.json is not valid JSON — backup aborted" >&2; exit 1; }
 cp "$APP_DIR/backend/.env" "$WORK/env"
 
-ARCHIVE="$BACKUP_DIR/primetickets-$STAMP.tar.gz"
-tar -czf "$ARCHIVE" \
+tar -czf "$ARCHIVE.part" \
   -C "$WORK" data.json env \
   -C "$APP_DIR/backend" uploads
-chmod 600 "$ARCHIVE"
-tar -tzf "$ARCHIVE" > /dev/null   # archive is readable
+tar -tzf "$ARCHIVE.part" > /dev/null   # archive is readable
+chmod 600 "$ARCHIVE.part"
+mv "$ARCHIVE.part" "$ARCHIVE"
 
 find "$BACKUP_DIR" -name 'primetickets-*.tar.gz' -mtime +"$KEEP_DAYS" -delete
 
