@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Ticket, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import useAuthStore from '../../store/authStore';
+import Logo from '../../components/common/Logo';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -42,10 +43,7 @@ export default function Login() {
       {/* Left panel */}
       <div className="hidden lg:flex lg:w-1/2 bg-hero-pattern flex-col justify-between p-12">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-            <Ticket className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-2xl font-bold text-white">PrimeTickets</span>
+          <Logo size="lg" onDark />
         </Link>
         <div>
           <h2 className="text-4xl font-black text-white mb-4">Welcome back!</h2>
@@ -60,12 +58,7 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
           <Link to="/" className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center">
-              <Ticket className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-gray-900">
-              Prime<span className="text-primary-600">Tickets</span>
-            </span>
+            <Logo />
           </Link>
 
           <h1 className="text-3xl font-black text-gray-900 mb-2">Sign in</h1>

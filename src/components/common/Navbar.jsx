@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Ticket, ShoppingCart, Menu, X, ChevronDown, LogOut, LayoutDashboard, User, Tag, Wifi } from 'lucide-react';
+import { ShoppingCart, Menu, X, ChevronDown, LogOut, LayoutDashboard, User, Tag, Wifi } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useEventStore from '../../store/eventStore';
+import Logo from './Logo';
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -26,12 +27,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center shadow-md shadow-primary-600/30 group-hover:bg-primary-700 transition-colors">
-              <Ticket className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-gray-900">
-              Prime<span className="text-primary-600">Tickets</span>
-            </span>
+            <Logo />
           </Link>
 
           {/* Desktop nav links */}

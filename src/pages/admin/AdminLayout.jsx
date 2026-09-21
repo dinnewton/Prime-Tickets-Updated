@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
-import {
-  Ticket, LayoutDashboard, CalendarDays, Building2, Users,
+import { LayoutDashboard, CalendarDays, Building2, Users,
   LogOut, Menu, X, Bell, ChevronDown, MessageCircle, LayoutGrid, FileText,
   ShoppingCart, UserPlus, CheckCheck,
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import { getAdminSocket } from '../../services/socket';
+import Logo from '../../components/common/Logo';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
@@ -100,13 +100,7 @@ export default function AdminLayout() {
       {/* Logo */}
       <div className="p-6 border-b border-white/10">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center">
-            <Ticket className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <p className="font-bold text-white leading-none">PrimeTickets</p>
-            <p className="text-xs text-gray-400">Admin Panel</p>
-          </div>
+          <Logo onDark subtitle="Admin Panel" />
         </Link>
       </div>
 
