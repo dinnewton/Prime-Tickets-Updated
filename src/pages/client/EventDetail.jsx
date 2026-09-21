@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  Calendar, MapPin, Clock, Users, Tag, ArrowLeft,
+  Calendar, MapPin, Clock, Users, ArrowLeft,
   Share2, Heart, CheckCircle, Ticket, Star, Wifi, UserPlus, UserCheck,
 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
@@ -117,7 +117,7 @@ export default function EventDetail() {
       </div>
 
       <main className="flex-1 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pb-28 lg:pb-10">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left: event info */}
             <div className="lg:col-span-2 space-y-6">
@@ -251,7 +251,7 @@ export default function EventDetail() {
                             <button
                               onClick={() => handleConnect(a)}
                               disabled={connectingId === a.id}
-                              className="flex items-center gap-1 text-xs font-semibold text-primary-600 border border-primary-200 hover:border-primary-400 hover:bg-primary-50 px-2.5 py-1.5 rounded-lg transition-all disabled:opacity-50"
+                              className="flex items-center gap-1 text-xs font-semibold text-primary-600 border border-primary-200 hover:border-primary-400 hover:bg-primary-50 px-3 py-2 rounded-lg transition-all disabled:opacity-50"
                             >
                               <UserPlus className="w-3.5 h-3.5" /> Connect
                             </button>
@@ -267,9 +267,9 @@ export default function EventDetail() {
               )}
             </div>
 
-            {/* Right: Ticket purchase widget */}
-            <div className="lg:col-span-1">
-              <div className="card p-6 sticky top-24">
+            {/* Right: Ticket purchase widget — hidden on mobile (use sticky bar instead) */}
+            <div className="hidden lg:block lg:col-span-1">
+              <div className="card p-6 lg:sticky lg:top-24">
                 <h2 className="text-xl font-bold text-gray-900 mb-6">Select Tickets</h2>
 
                 {/* Ticket type */}
@@ -325,14 +325,14 @@ export default function EventDetail() {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 text-xl flex items-center justify-center transition-colors"
+                      className="w-12 h-12 rounded-xl bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 text-xl flex items-center justify-center transition-colors"
                     >
                       −
                     </button>
                     <span className="text-2xl font-black text-gray-900 w-10 text-center">{quantity}</span>
                     <button
                       onClick={() => setQuantity(Math.min(10, quantity + 1))}
-                      className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 text-xl flex items-center justify-center transition-colors"
+                      className="w-12 h-12 rounded-xl bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 text-xl flex items-center justify-center transition-colors"
                     >
                       +
                     </button>
@@ -390,6 +390,17 @@ export default function EventDetail() {
       </main>
 
       <Footer />
+
+      {/* Mobile sticky buy bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white border-t border-gray-200 px-4 py-3 flex items-center gap-4 shadow-xl">
+        <div className="shrink-0">
+          <p className="text-xs text-gray-400 leading-none">From</p>
+          <p className="text-xl font-black text-gray-900">Ksh {event.price.toLocaleString()}</p>
+        </div>
+        <button onClick={handleBuyNow} className="btn-primary flex-1 justify-center !py-3">
+          Buy Tickets
+        </button>
+      </div>
     </div>
   );
 }

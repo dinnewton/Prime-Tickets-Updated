@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Ticket, ArrowRightLeft, Tag, X, CheckCircle, AlertCircle, Clock, Loader2 } from 'lucide-react';
+import { Ticket, ArrowRightLeft, Tag, X, CheckCircle, AlertCircle, Clock, Loader2, Wifi } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import useAuthStore from '../../store/authStore';
@@ -269,13 +269,19 @@ function BookingCard({ booking, onTransfer, onSell, onCancelListing, readOnly })
         </div>
 
         {!readOnly && booking.status === 'active' && isUpcoming && (
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex flex-wrap items-center gap-2 mt-1">
             <button onClick={onTransfer} className="flex items-center gap-1.5 text-xs font-semibold text-primary-600 hover:text-primary-700 border border-primary-200 hover:border-primary-400 px-3 py-1.5 rounded-lg transition-all">
               <ArrowRightLeft className="w-3.5 h-3.5" /> Transfer
             </button>
             <button onClick={onSell} className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 hover:text-amber-700 border border-amber-200 hover:border-amber-400 px-3 py-1.5 rounded-lg transition-all">
               <Tag className="w-3.5 h-3.5" /> Sell
             </button>
+            <Link
+              to={`/events/${booking.eventId}`}
+              className="flex items-center gap-1.5 text-xs font-semibold text-violet-600 hover:text-violet-700 border border-violet-200 hover:border-violet-400 hover:bg-violet-50 px-3 py-1.5 rounded-lg transition-all"
+            >
+              <Wifi className="w-3.5 h-3.5" /> Meet attendees
+            </Link>
           </div>
         )}
         {!readOnly && booking.status === 'listed' && (

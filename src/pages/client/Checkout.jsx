@@ -105,7 +105,7 @@ export default function Checkout() {
 
   const handleConfirmPayment = () => {
     clearCart();
-    navigate('/confirmation', { state: { total, email: form.email, ref: pushRef, mpesa: true } });
+    navigate('/confirmation', { state: { total, email: form.email, ref: pushRef, mpesa: true, cart } });
   };
 
   const formatPhone = (val) => {
@@ -525,7 +525,7 @@ export default function Checkout() {
 
             {/* Right: Order summary */}
             <div>
-              <div className="card p-6 sticky top-24">
+              <div className="card p-6 lg:sticky lg:top-24">
                 <h3 className="font-bold text-gray-900 text-lg mb-4">Order Summary</h3>
                 <div className="space-y-3 mb-4">
                   {cart.map((item) => (

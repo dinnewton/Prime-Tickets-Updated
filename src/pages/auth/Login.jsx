@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Ticket, Eye, EyeOff, AlertCircle, Users, Building2 } from 'lucide-react';
+import { Ticket, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import useAuthStore from '../../store/authStore';
 
@@ -36,23 +36,6 @@ export default function Login() {
       setError(result.error);
     }
   };
-
-  const demoAccounts = [
-    {
-      label: 'Vendor Demo',
-      icon: Building2,
-      email: 'vendor@primetickets.co.ke',
-      password: 'vendor123',
-      color: 'text-primary-700 bg-primary-50 border-primary-200 hover:bg-primary-100',
-    },
-    {
-      label: 'Client Demo',
-      icon: Users,
-      email: 'client@primetickets.co.ke',
-      password: 'client123',
-      color: 'text-green-700 bg-green-50 border-green-200 hover:bg-green-100',
-    },
-  ];
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -92,25 +75,6 @@ export default function Login() {
               Sign up
             </Link>
           </p>
-
-          {/* Demo accounts — vendor and client only */}
-          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-6">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
-              Quick Demo Access
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              {demoAccounts.map((acc) => (
-                <button
-                  key={acc.label}
-                  onClick={() => setForm({ email: acc.email, password: acc.password })}
-                  className={`flex items-center gap-2 py-2.5 px-3 rounded-xl border text-sm font-semibold transition-colors ${acc.color}`}
-                >
-                  <acc.icon className="w-4 h-4" />
-                  {acc.label}
-                </button>
-              ))}
-            </div>
-          </div>
 
           {error && (
             <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 mb-4 text-sm">

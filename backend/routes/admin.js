@@ -114,4 +114,19 @@ router.patch('/users/:id/status', (req, res) => {
   res.json(safe);
 });
 
+// ─── Notifications ────────────────────────────────────────────────────────────
+router.get('/notifications', (req, res) => {
+  res.json(db.getNotifications().slice(0, 50));
+});
+
+router.patch('/notifications/read-all', (req, res) => {
+  db.markAllNotificationsRead();
+  res.json({ ok: true });
+});
+
+router.patch('/notifications/:id/read', (req, res) => {
+  db.markNotificationRead(req.params.id);
+  res.json({ ok: true });
+});
+
 module.exports = router;

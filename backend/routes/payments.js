@@ -76,6 +76,12 @@ router.post('/mpesa/callback', (req, res) => {
     if (!payment) return;
 
     if (ResultCode === 0) {
+      // Idempotency: Safaricom retries callbacks — skip if already processed
+      if (payment.status === 'success') {
+        console.log(`[Payments] Duplicate callback for ${CheckoutRequestID} — ignoring`);
+        return;
+      }
+
       // Payment successful — extract metadata
       const meta = {};
       CallbackMetadata?.Item?.forEach((item) => {
@@ -153,6 +159,20 @@ router.post('/mpesa/callback', (req, res) => {
           });
           db.updateListing(listing.id, { status: 'sold', soldTo: payment.buyerId, soldAt: new Date().toISOString() });
         }
+      }
+
+      // Notify admin in real-time
+      const io = req.app.get('io');
+      if (io) {
+        const eventTitles = payment.cart.map((i) => i.eventTitle).join(', ');
+        const totalQty = payment.cart.reduce((s, i) => s + i.quantity, 0);
+        const notif = db.createNotification({
+          type: 'ticket_purchase',
+          title: 'Tickets Purchased',
+          message: `${payment.customerName} bought ${totalQty} ticket${totalQty !== 1 ? 's' : ''} for ${eventTitles} — Ksh ${payment.amount.toLocaleString()}`,
+          meta: { orderRef: payment.orderRef, amount: payment.amount },
+        });
+        io.to('admin-room').emit('admin:notification', notif);
       }
 
       // Send ticket confirmations (email, WhatsApp, SMS) — non-blocking
@@ -248,10 +268,19 @@ router.get('/', authMiddleware, requireRole('admin'), (req, res) => {
 });
 
 /**
- * GET /api/payments/bookings — admin: all bookings
+ * GET /api/payments/bookings — admin: all bookings, supports ?page=&limit=
  */
 router.get('/bookings', authMiddleware, requireRole('admin'), (req, res) => {
-  res.json(db.getBookings());
+  let list = db.getBookings().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const { page, limit } = req.query;
+  if (page || limit) {
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(limit) || 50));
+    const total = list.length;
+    list = list.slice((pageNum - 1) * pageSize, pageNum * pageSize);
+    return res.json({ data: list, total, page: pageNum, limit: pageSize, pages: Math.ceil(total / pageSize) });
+  }
+  res.json(list);
 });
 
 module.exports = router;

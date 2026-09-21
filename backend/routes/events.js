@@ -2,10 +2,10 @@ const router = require('express').Router();
 const db = require('../db/store');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 
-// GET /api/events — public, supports ?category=&city=&search=&featured=
+// GET /api/events — public, supports ?category=&city=&search=&featured=&page=&limit=
 router.get('/', (req, res) => {
   let list = db.getEvents();
-  const { category, city, search, featured } = req.query;
+  const { category, city, search, featured, page, limit } = req.query;
 
   // Hide events admin removed from homepage (unless fetching featured for hero)
   if (featured !== 'true') list = list.filter((e) => !e.hiddenFromHome);
@@ -26,6 +26,14 @@ router.get('/', (req, res) => {
 
   // Sort by priority descending (higher priority appears first)
   list.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+
+  const total = list.length;
+  if (page || limit) {
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    list = list.slice((pageNum - 1) * pageSize, pageNum * pageSize);
+    return res.json({ data: list, total, page: pageNum, limit: pageSize, pages: Math.ceil(total / pageSize) });
+  }
 
   res.json(list);
 });

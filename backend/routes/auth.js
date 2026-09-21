@@ -77,6 +77,19 @@ router.post('/vendor/register', async (req, res) => {
   const vendor = db.createVendor({ name, ownerName, email, password: hashed, phone, category, description });
 
   const token = signToken({ id: vendor.id, email: vendor.email, role: 'vendor', name: vendor.name });
+
+  // Notify admin in real-time
+  const io = req.app.get('io');
+  if (io) {
+    const notif = db.createNotification({
+      type: 'vendor_joined',
+      title: 'New Vendor Registered',
+      message: `${name} (${ownerName}) signed up as an event organiser.`,
+      meta: { vendorId: vendor.id },
+    });
+    io.to('admin-room').emit('admin:notification', notif);
+  }
+
   res.status(201).json({ token, vendor: safeUser(vendor) });
 });
 

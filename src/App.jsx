@@ -36,6 +36,7 @@ import CreateEvent from './pages/vendor/CreateEvent';
 import ChatWidget from './components/chat/ChatWidget';
 import AdminChat from './pages/admin/Chat';
 import HomepageSettings from './pages/admin/HomepageSettings';
+import FooterSettings from './pages/admin/FooterSettings';
 
 // Admin route guard — redirects to the hidden admin login, not the public one
 function RequireAdmin({ children }) {
@@ -98,6 +99,7 @@ export default function App() {
           <Route path="users" element={<AdminUsers />} />
           <Route path="chat" element={<AdminChat />} />
           <Route path="homepage" element={<HomepageSettings />} />
+          <Route path="footer" element={<FooterSettings />} />
         </Route>
 
         {/* Vendor */}

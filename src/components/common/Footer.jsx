@@ -1,7 +1,36 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Ticket, Facebook, Twitter, Instagram, Youtube, Mail, Phone, MapPin } from 'lucide-react';
 
+const DEFAULTS = {
+  tagline: 'Your premier destination for live events across Kenya. Concerts, sport, theatre, and more — all in one place.',
+  email: 'support@primetickets.co.ke',
+  phone: '0800 PRIME (77463)',
+  address: 'Westlands, Nairobi, Kenya',
+  copyright: 'PrimeTickets Ltd',
+  facebook: '',
+  twitter: '',
+  instagram: '',
+  youtube: '',
+};
+
+const SOCIAL = [
+  { key: 'facebook', Icon: Facebook },
+  { key: 'twitter',  Icon: Twitter  },
+  { key: 'instagram',Icon: Instagram},
+  { key: 'youtube',  Icon: Youtube  },
+];
+
 export default function Footer() {
+  const [s, setS] = useState(DEFAULTS);
+
+  useEffect(() => {
+    fetch('/api/settings/footer')
+      .then((r) => r.json())
+      .then((data) => setS({ ...DEFAULTS, ...data }))
+      .catch(() => {});
+  }, []);
+
   return (
     <footer className="bg-gray-900 text-gray-400">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
@@ -16,19 +45,22 @@ export default function Footer() {
                 Prime<span className="text-primary-400">Tickets</span>
               </span>
             </Link>
-            <p className="text-sm leading-relaxed">
-              Your premier destination for live events across South Africa. Concerts, sport, theatre, and more — all in one place.
-            </p>
+            <p className="text-sm leading-relaxed">{s.tagline}</p>
             <div className="flex items-center gap-3 pt-2">
-              {[Facebook, Twitter, Instagram, Youtube].map((Icon, i) => (
-                <a
-                  key={i}
-                  href="#"
-                  className="w-9 h-9 rounded-xl bg-gray-800 hover:bg-primary-600 flex items-center justify-center transition-colors"
-                >
-                  <Icon className="w-4 h-4" />
-                </a>
-              ))}
+              {SOCIAL.map(({ key, Icon }) => {
+                const href = s[key];
+                return (
+                  <a
+                    key={key}
+                    href={href || '#'}
+                    target={href ? '_blank' : undefined}
+                    rel="noopener noreferrer"
+                    className="w-9 h-9 rounded-xl bg-gray-800 hover:bg-primary-600 flex items-center justify-center transition-colors"
+                  >
+                    <Icon className="w-4 h-4" />
+                  </a>
+                );
+              })}
             </div>
           </div>
 
@@ -44,10 +76,7 @@ export default function Footer() {
                 { label: 'Arts & Theatre', to: '/?category=Arts+%26+Theatre' },
               ].map((link) => (
                 <li key={link.label}>
-                  <Link
-                    to={link.to}
-                    className="hover:text-primary-400 transition-colors"
-                  >
+                  <Link to={link.to} className="hover:text-primary-400 transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -67,10 +96,7 @@ export default function Footer() {
                 { label: 'Terms of Service', to: '#' },
               ].map((link) => (
                 <li key={link.label}>
-                  <Link
-                    to={link.to}
-                    className="hover:text-primary-400 transition-colors"
-                  >
+                  <Link to={link.to} className="hover:text-primary-400 transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -84,22 +110,22 @@ export default function Footer() {
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-3">
                 <Mail className="w-4 h-4 mt-0.5 text-primary-400 shrink-0" />
-                <span>support@primetickets.co.za</span>
+                <span>{s.email}</span>
               </li>
               <li className="flex items-start gap-3">
                 <Phone className="w-4 h-4 mt-0.5 text-primary-400 shrink-0" />
-                <span>0800 PRIME (77463)</span>
+                <span>{s.phone}</span>
               </li>
               <li className="flex items-start gap-3">
                 <MapPin className="w-4 h-4 mt-0.5 text-primary-400 shrink-0" />
-                <span>14 Sandton Drive, Sandton, Johannesburg, 2196</span>
+                <span>{s.address}</span>
               </li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-gray-800 mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
-          <p>© {new Date().getFullYear()} PrimeTickets (Pty) Ltd. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {s.copyright}. All rights reserved.</p>
           <div className="flex items-center gap-4">
             <a href="#" className="hover:text-primary-400 transition-colors">Privacy Policy</a>
             <a href="#" className="hover:text-primary-400 transition-colors">Terms of Use</a>

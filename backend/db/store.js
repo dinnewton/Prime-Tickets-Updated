@@ -255,6 +255,18 @@ try {
   console.error('[DB] Failed to load data.json, using seed data:', e.message);
 }
 
+const defaultFooterSettings = {
+  tagline: 'Your premier destination for live events across Kenya. Concerts, sport, theatre, and more — all in one place.',
+  email: 'support@primetickets.co.ke',
+  phone: '0800 PRIME (77463)',
+  address: 'Westlands, Nairobi, Kenya',
+  copyright: 'PrimeTickets Ltd',
+  facebook: '',
+  twitter: '',
+  instagram: '',
+  youtube: '',
+};
+
 if (!_data) {
   _data = {
     users: seedUsers,
@@ -264,6 +276,7 @@ if (!_data) {
     bookings: [],
     listings: [],
     transfers: [],
+    footerSettings: { ...defaultFooterSettings },
   };
 }
 
@@ -272,6 +285,8 @@ if (!_data.listings)        _data.listings = [];
 if (!_data.transfers)       _data.transfers = [];
 if (!_data.connections)     _data.connections = [];
 if (!_data.directMessages)  _data.directMessages = [];
+if (!_data.footerSettings)  _data.footerSettings = { ...defaultFooterSettings };
+if (!_data.notifications)   _data.notifications = [];
 
 // Live references — mutations to these are reflected in _data
 const users     = _data.users;
@@ -285,9 +300,12 @@ const connections    = _data.connections;
 const directMessages = _data.directMessages;
 
 // ─── PERSIST ─────────────────────────────────────────────────────────────────
+// Atomic write: write to .tmp then rename so a crash mid-write never corrupts the file.
+const TMP_FILE = DATA_FILE + '.tmp';
 function save() {
   try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(_data, null, 2));
+    fs.writeFileSync(TMP_FILE, JSON.stringify(_data, null, 2));
+    fs.renameSync(TMP_FILE, DATA_FILE);
   } catch (e) {
     console.error('[DB] Failed to write data.json:', e.message);
   }
@@ -454,6 +472,33 @@ const db = {
     connections[idx] = { ...connections[idx], ...updates };
     save();
     return connections[idx];
+  },
+
+  // Notifications
+  createNotification: (data) => {
+    const notif = { id: uuidv4(), read: false, createdAt: new Date().toISOString(), ...data };
+    _data.notifications.unshift(notif);
+    if (_data.notifications.length > 200) _data.notifications = _data.notifications.slice(0, 200);
+    save();
+    return notif;
+  },
+  getNotifications: () => _data.notifications,
+  markNotificationRead: (id) => {
+    const n = _data.notifications.find((n) => n.id === id);
+    if (n) { n.read = true; save(); }
+  },
+  markAllNotificationsRead: () => {
+    _data.notifications.forEach((n) => { n.read = true; });
+    save();
+  },
+  unreadNotificationCount: () => _data.notifications.filter((n) => !n.read).length,
+
+  // Footer settings
+  getFooterSettings: () => _data.footerSettings,
+  updateFooterSettings: (updates) => {
+    _data.footerSettings = { ..._data.footerSettings, ...updates };
+    save();
+    return _data.footerSettings;
   },
 
   // Direct Messages

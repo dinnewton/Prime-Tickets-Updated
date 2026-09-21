@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
+const rateLimit = require('express-rate-limit');
 const chat = require('./services/chat');
 
 const app = express();
@@ -14,7 +15,7 @@ const DIST = path.join(__dirname, '../dist');
 // ─── Socket.io ────────────────────────────────────────────────────────────────
 const io = new Server(server, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5000'],
+    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5000', 'https://primeticketsoko.com', 'https://www.primeticketsoko.com'],
     methods: ['GET', 'POST'],
   },
 });
@@ -127,12 +128,20 @@ io.on('connection', (socket) => {
 // Expose io to routes
 app.set('io', io);
 
+// ─── Rate limiting ─────────────────────────────────────────────────────────────
+const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false });
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { message: 'Too many login attempts, try again in 15 minutes' } });
+const stkLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: { message: 'Too many payment requests, try again in 15 minutes' } });
+
 // ─── Middleware ────────────────────────────────────────────────────────────────
 if (!isProd) {
   app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:5174'], credentials: true }));
 }
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/api/', apiLimiter);
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/payments/mpesa/stk-push', stkLimiter);
 
 // Guard against malformed URIs from security scanners (prevents crash-restart loops)
 app.use((req, res, next) => {
@@ -160,9 +169,16 @@ app.use('/api/chat',      require('./routes/chat'));
 app.use('/api/market',    require('./routes/market'));
 app.use('/api/transfers', require('./routes/transfers'));
 app.use('/api/network',   require('./routes/network'));
+app.use('/api/settings', require('./routes/settings'));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', time: new Date().toISOString(), env: process.env.MPESA_ENV });
+  res.json({
+    status: 'ok',
+    time: new Date().toISOString(),
+    mpesaEnv: process.env.MPESA_ENV || 'sandbox',
+    emailConfigured: !!(process.env.SMTP_USER && process.env.SMTP_PASS),
+    smsConfigured: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
+  });
 });
 
 // ─── Serve React (production) ─────────────────────────────────────────────────
@@ -182,11 +198,17 @@ app.use((err, _req, res, _next) => {
 // ─── Start ────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
+  const mpesaEnv = process.env.MPESA_ENV || 'sandbox';
   console.log(`
 ╔═══════════════════════════════════════════╗
 ║  PrimeTickets API — Running on :${PORT}     ║
 ║  Socket.io  : enabled (live chat)         ║
-║  M-Pesa Env : ${(process.env.MPESA_ENV || 'sandbox').padEnd(27)}║
+║  M-Pesa Env : ${mpesaEnv.padEnd(27)}║
 ╚═══════════════════════════════════════════╝
   `);
+
+  if (mpesaEnv !== 'production') console.warn('[WARN] M-Pesa is in SANDBOX mode — no real payments');
+  if (!process.env.SMTP_USER)    console.warn('[WARN] SMTP_USER not set — confirmation emails disabled');
+  if (!process.env.TWILIO_ACCOUNT_SID) console.warn('[WARN] TWILIO_ACCOUNT_SID not set — SMS/WhatsApp disabled');
+  if (!process.env.JWT_SECRET)   console.warn('[WARN] JWT_SECRET not set — using insecure default');
 });

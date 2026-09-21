@@ -40,7 +40,7 @@ export default function HeroSection() {
   if (!featured.length || !event) return null;
 
   return (
-    <section className="relative w-full h-[580px] md:h-[640px] overflow-hidden">
+    <section className="relative w-full h-[500px] sm:h-[560px] md:h-[640px] overflow-hidden">
       {/* Background images */}
       {featured.map((e, i) => (
         <div
@@ -74,43 +74,43 @@ export default function HeroSection() {
           </div>
 
           {/* Title */}
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white leading-tight mb-4 drop-shadow-lg">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white leading-tight mb-3 drop-shadow-lg">
             {event.title}
           </h1>
 
           {/* Meta */}
-          <div className="flex flex-wrap items-center gap-4 mb-6">
-            <div className="flex items-center gap-2 text-white/90 text-sm">
-              <Calendar className="w-4 h-4 text-accent-400" />
+          <div className="flex flex-wrap items-center gap-3 mb-4 sm:mb-6">
+            <div className="flex items-center gap-2 text-white/90 text-xs sm:text-sm">
+              <Calendar className="w-4 h-4 text-accent-400 shrink-0" />
               {formatDate(event.date)} · {event.time}
             </div>
-            <div className="flex items-center gap-2 text-white/90 text-sm">
-              <MapPin className="w-4 h-4 text-accent-400" />
-              {event.venue}
+            <div className="flex items-center gap-2 text-white/90 text-xs sm:text-sm">
+              <MapPin className="w-4 h-4 text-accent-400 shrink-0" />
+              <span className="line-clamp-1">{event.venue}</span>
             </div>
           </div>
 
-          {/* Description */}
-          <p className="text-white/80 text-base leading-relaxed mb-8 line-clamp-2 max-w-xl">
+          {/* Description — hidden on small screens to save space */}
+          <p className="hidden sm:block text-white/80 text-base leading-relaxed mb-6 line-clamp-2 max-w-xl">
             {event.description}
           </p>
 
           {/* Price + CTA */}
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
             <div>
               <p className="text-white/60 text-xs uppercase tracking-widest font-medium">Tickets from</p>
-              <p className="text-4xl font-black text-white">Ksh {event.price.toLocaleString()}</p>
+              <p className="text-3xl sm:text-4xl font-black text-white">Ksh {event.price.toLocaleString()}</p>
             </div>
             <button
               onClick={() => navigate(`/events/${event.id}`)}
-              className="btn-primary !py-3.5 !px-8 !text-base group"
+              className="btn-primary !py-3 !px-6 !text-sm sm:!py-3.5 sm:!px-8 sm:!text-base group"
             >
               Get Tickets
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
             <button
               onClick={() => navigate(`/events/${event.id}`)}
-              className="btn-secondary !py-3.5 !px-8 !text-base !bg-white/10 !text-white !border-white/30 hover:!bg-white/20"
+              className="hidden sm:flex btn-secondary !py-3.5 !px-8 !text-base !bg-white/10 !text-white !border-white/30 hover:!bg-white/20"
             >
               Learn More
             </button>
@@ -118,17 +118,20 @@ export default function HeroSection() {
         </div>
 
         {/* Slide indicators */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1">
           {featured.map((_, i) => (
             <button
               key={i}
               onClick={() => setCurrent(i)}
-              className={`rounded-full transition-all duration-300 ${
+              className="p-2"
+              aria-label={`Slide ${i + 1}`}
+            >
+              <span className={`block rounded-full transition-all duration-300 ${
                 i === current
                   ? 'w-8 h-2.5 bg-accent-500'
                   : 'w-2.5 h-2.5 bg-white/40 hover:bg-white/70'
-              }`}
-            />
+              }`} />
+            </button>
           ))}
         </div>
       </div>

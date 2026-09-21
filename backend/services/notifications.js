@@ -78,8 +78,8 @@ function buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart, event
         <!-- Footer -->
         <tr><td style="background:#f9fafb;padding:24px 40px;text-align:center;border-top:1px solid #f0f0f0">
           <p style="margin:0;color:#999;font-size:12px">
-            PrimeTickets · Questions? Reply to this email<br>
-            <a href="http://188.166.155.26" style="color:#7C3AED;text-decoration:none">primetickets.co.za</a>
+            PrimeTickets · Questions? Email us at support@primeticketsoko.com<br>
+            <a href="https://primeticketsoko.com" style="color:#7C3AED;text-decoration:none">primeticketsoko.com</a>
           </p>
         </td></tr>
 

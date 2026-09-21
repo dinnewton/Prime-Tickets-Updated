@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
 import {
   Ticket, LayoutDashboard, CalendarDays, Building2, Users,
-  LogOut, Menu, X, Bell, ChevronDown, MessageCircle, LayoutGrid,
+  LogOut, Menu, X, Bell, ChevronDown, MessageCircle, LayoutGrid, FileText,
+  ShoppingCart, UserPlus, CheckCheck,
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
+import { getAdminSocket } from '../../services/socket';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
@@ -13,13 +15,62 @@ const navItems = [
   { to: '/admin/vendors', icon: Building2, label: 'Vendors' },
   { to: '/admin/users', icon: Users, label: 'Users' },
   { to: '/admin/chat', icon: MessageCircle, label: 'Live Chat' },
+  { to: '/admin/footer', icon: FileText, label: 'Footer' },
 ];
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatUnread, setChatUnread] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef(null);
   const { user, token, logout } = useAuthStore();
   const navigate = useNavigate();
+
+  const unreadNotifs = notifications.filter((n) => !n.read).length;
+
+  // Fetch notifications on mount
+  useEffect(() => {
+    fetch('/api/admin/notifications', { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then(setNotifications)
+      .catch(() => {});
+  }, [token]);
+
+  // Real-time notifications via socket
+  useEffect(() => {
+    if (!token) return;
+    const socket = getAdminSocket(token);
+    socket.on('admin:notification', (notif) => {
+      setNotifications((prev) => [notif, ...prev].slice(0, 50));
+    });
+    return () => socket.off('admin:notification');
+  }, [token]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  function markAllRead() {
+    fetch('/api/admin/notifications/read-all', {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  }
+
+  function markOneRead(id) {
+    fetch(`/api/admin/notifications/${id}/read`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+  }
 
   // Poll unread chat count every 15s
   useEffect(() => {
@@ -130,10 +181,63 @@ export default function AdminLayout() {
           </button>
 
           <div className="flex items-center gap-3 ml-auto">
-            <button className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-xl">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-            </button>
+            {/* Notifications bell */}
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={() => setNotifOpen((o) => !o)}
+                className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-xl"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadNotifs > 0 && (
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {unreadNotifs > 9 ? '9+' : unreadNotifs}
+                  </span>
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className="absolute right-0 top-12 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                    <h3 className="font-bold text-gray-900 text-sm">Notifications</h3>
+                    {unreadNotifs > 0 && (
+                      <button onClick={markAllRead} className="flex items-center gap-1 text-xs text-primary-600 hover:underline font-medium">
+                        <CheckCheck className="w-3.5 h-3.5" /> Mark all read
+                      </button>
+                    )}
+                  </div>
+
+                  {/* List */}
+                  <div className="max-h-96 overflow-y-auto divide-y divide-gray-50">
+                    {notifications.length === 0 ? (
+                      <div className="text-center py-10 text-gray-400 text-sm">No notifications yet</div>
+                    ) : (
+                      notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          onClick={() => markOneRead(n.id)}
+                          className={`flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors ${!n.read ? 'bg-primary-50/50' : ''}`}
+                        >
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${n.type === 'vendor_joined' ? 'bg-blue-100' : 'bg-green-100'}`}>
+                            {n.type === 'vendor_joined'
+                              ? <UserPlus className="w-4 h-4 text-blue-600" />
+                              : <ShoppingCart className="w-4 h-4 text-green-600" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-semibold text-gray-900 ${!n.read ? 'font-bold' : ''}`}>{n.title}</p>
+                            <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.message}</p>
+                            <p className="text-[10px] text-gray-400 mt-1">
+                              {new Date(n.createdAt).toLocaleString('en-KE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                          {!n.read && <span className="w-2 h-2 bg-primary-500 rounded-full mt-1.5 shrink-0" />}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 cursor-pointer">
               <div className="w-8 h-8 rounded-full bg-primary-600 text-white text-sm font-bold flex items-center justify-center">
                 {user?.name?.charAt(0)}
