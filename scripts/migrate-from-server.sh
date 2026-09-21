@@ -34,7 +34,16 @@ if [ "$FINAL" = "--final" ]; then
 fi
 
 echo "Copying backend/.env..."
+# Keep this server's port: it may differ from the old server's (shared host).
+LOCAL_PORT=$(grep -s '^PORT=' backend/.env | cut -d= -f2)
 scp -o ControlPath="$SOCKET" "$REMOTE:$APP_DIR/backend/.env" backend/.env
+if [ -n "$LOCAL_PORT" ]; then
+  if grep -q '^PORT=' backend/.env; then
+    sed -i "s/^PORT=.*/PORT=$LOCAL_PORT/" backend/.env
+  else
+    echo "PORT=$LOCAL_PORT" >> backend/.env
+  fi
+fi
 
 echo "Copying backend/db/data.json..."
 if [ -f backend/db/data.json ]; then
