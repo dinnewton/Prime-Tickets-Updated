@@ -39,3 +39,7 @@ Thumbs.db
 
 # Uploaded event images
 backend/uploads/events/
+
+# Live data (users, bookings) and its backups — never commit
+backend/db/data*.json
+backend/db/*.tmp

@@ -36,12 +36,13 @@ function getVisitorName() {
 let visitorSocket = null;
 let adminSocket = null;
 
-function getAuthUserId() {
+// The server identifies logged-in users from this token, not from a user id
+function getAuthToken() {
   try {
     const raw = localStorage.getItem('prime-auth');
     if (raw) {
       const parsed = JSON.parse(raw);
-      return parsed?.state?.user?.id || null;
+      return parsed?.state?.token || null;
     }
   } catch {}
   return null;
@@ -54,7 +55,7 @@ export function getVisitorSocket() {
         sessionId: getSessionId(),
         visitorName: getVisitorName(),
         role: 'visitor',
-        userId: getAuthUserId(),
+        token: getAuthToken(),
       },
       autoConnect: true,
     });

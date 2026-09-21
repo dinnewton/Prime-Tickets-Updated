@@ -5,9 +5,13 @@ const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const rateLimit = require('express-rate-limit');
+const jwt = require('jsonwebtoken');
 const chat = require('./services/chat');
 
 const app = express();
+// Behind nginx on the same host: take the client IP nginx passes on, so rate
+// limits apply per visitor instead of to everyone at once.
+app.set('trust proxy', 'loopback');
 const server = http.createServer(app);
 const isProd = process.env.NODE_ENV === 'production';
 const DIST = path.join(__dirname, '../dist');
@@ -21,7 +25,22 @@ const io = new Server(server, {
 });
 
 io.on('connection', (socket) => {
-  const { sessionId, visitorName, role, userId, vendorId, vendorName } = socket.handshake.auth;
+  const auth = socket.handshake.auth || {};
+
+  // Identity comes only from a verified login token — never from fields the
+  // client claims. A requested admin/vendor role is granted only if the
+  // token proves it; everyone else is a visitor.
+  let account = null;
+  try { if (auth.token) account = jwt.verify(auth.token, process.env.JWT_SECRET); } catch {}
+  const role =
+    auth.role === 'admin' && account?.role === 'admin' ? 'admin'
+    : auth.role === 'vendor' && account?.role === 'vendor' ? 'vendor'
+    : 'visitor';
+  const userId = account && account.role !== 'vendor' ? account.id : null;
+  const vendorId = role === 'vendor' ? account.id : null;
+  const vendorName = role === 'vendor' ? account.name : null;
+  const sessionId = typeof auth.sessionId === 'string' && auth.sessionId ? auth.sessionId.slice(0, 64) : socket.id;
+  const visitorName = account?.name || String(auth.visitorName || 'Visitor').slice(0, 60);
 
   // Each authenticated user joins their personal room for DMs + notifications
   if (userId) socket.join(`user:${userId}`);
@@ -76,7 +95,7 @@ io.on('connection', (socket) => {
 
   // ─── Admin → visitor reply ───────────────────────────────────────────────────
   socket.on('chat:admin_reply', ({ targetSessionId, text }) => {
-    if (!targetSessionId || !text?.trim()) return;
+    if (role !== 'admin' || !targetSessionId || !text?.trim()) return;
     const msg = chat.addMessage(targetSessionId, { sender: 'admin', senderName: 'Support', text: text.trim() });
     if (!msg) return;
     chat.markRead(targetSessionId);
@@ -85,6 +104,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chat:mark_read', ({ targetSessionId }) => {
+    if (role !== 'admin') return;
     chat.markRead(targetSessionId);
     io.to('admin-room').emit('chat:read', { sessionId: targetSessionId });
   });
@@ -100,7 +120,7 @@ io.on('connection', (socket) => {
 
   // ─── Admin → vendor reply ────────────────────────────────────────────────────
   socket.on('chat:admin_vendor_reply', ({ targetVendorId, text }) => {
-    if (!targetVendorId || !text?.trim()) return;
+    if (role !== 'admin' || !targetVendorId || !text?.trim()) return;
     const vConvo = chat.getVendorConversation(targetVendorId);
     if (!vConvo) return;
     const msg = chat.addVendorMessage(targetVendorId, { sender: 'admin', senderName: 'Support', text: text.trim() });
@@ -111,6 +131,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chat:mark_vendor_read', ({ targetVendorId }) => {
+    if (role !== 'admin') return;
     chat.markVendorRead(targetVendorId);
     io.to('admin-room').emit('chat:vendor_read', { vendorId: targetVendorId });
   });

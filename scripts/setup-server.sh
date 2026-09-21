@@ -124,11 +124,24 @@ fi
 
 # ─── 8. Nginx site (own file only) ───────────────────────────
 echo "[8/9] Configuring Nginx..."
+# Real visitor IPs when Cloudflare proxies the site (used by the app's rate limits).
+# Only trusted for requests that actually come from Cloudflare's ranges.
+REALIP_CONF="/etc/nginx/snippets/cloudflare-realip.conf"
+mkdir -p /etc/nginx/snippets
+{
+  echo "# Cloudflare ranges — refresh by re-running setup-server.sh"
+  for r in $(curl -fsSL https://www.cloudflare.com/ips-v4) $(curl -fsSL https://www.cloudflare.com/ips-v6); do
+    echo "set_real_ip_from $r;"
+  done
+  echo "real_ip_header CF-Connecting-IP;"
+} > "$REALIP_CONF"
+
 NGINX_CONF="/etc/nginx/sites-available/primetickets"
 cat > "$NGINX_CONF" << NGINX
 server {
     listen 80;
     server_name $DOMAIN www.$DOMAIN;
+    include $REALIP_CONF;
 
     location / {
         proxy_pass         http://127.0.0.1:$APP_PORT;
