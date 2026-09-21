@@ -114,7 +114,7 @@ if [ ! -f "$APP_DIR/backend/.env" ]; then
   echo "  ⚠️  IMPORTANT: Edit $APP_DIR/backend/.env"
   echo "      Fill in your M-Pesa credentials and callback URL."
   echo "      Press ENTER to continue when ready (or Ctrl+C to do it first)."
-  read -r
+  read -r || true   # no terminal (e.g. run over ssh): continue
 fi
 if grep -q '^PORT=' "$APP_DIR/backend/.env"; then
   sed -i "s/^PORT=.*/PORT=$APP_PORT/" "$APP_DIR/backend/.env"
