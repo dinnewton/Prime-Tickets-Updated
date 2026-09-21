@@ -176,7 +176,7 @@ cd "$APP_DIR"
 pm2 delete primetickets 2>/dev/null || true
 pm2 start ecosystem.config.cjs --env production
 pm2 save
-systemctl is-enabled pm2-root > /dev/null 2>&1 || pm2 startup systemd -u root --hp /root | tail -1 | bash
+systemctl is-enabled pm2-root > /dev/null 2>&1 || pm2 startup systemd -u root --hp /root > /dev/null
 
 echo ""
 echo "========================================="
