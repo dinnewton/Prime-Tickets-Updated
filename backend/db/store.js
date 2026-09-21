@@ -245,6 +245,9 @@ const seedEvents = [
 ];
 
 // ─── LOAD OR INITIALISE ───────────────────────────────────────────────────────
+// In production, never fall back to seed data: its accounts have public
+// passwords, and the next save would overwrite the real data.json.
+const isProd = process.env.NODE_ENV === 'production';
 let _data;
 try {
   if (fs.existsSync(DATA_FILE)) {
@@ -252,6 +255,10 @@ try {
     console.log('[DB] Loaded data.json');
   }
 } catch (e) {
+  if (isProd) {
+    console.error('[DB] Failed to load data.json — refusing to start so it is not overwritten:', e.message);
+    throw e;
+  }
   console.error('[DB] Failed to load data.json, using seed data:', e.message);
 }
 
@@ -269,9 +276,10 @@ const defaultFooterSettings = {
 
 if (!_data) {
   _data = {
-    users: seedUsers,
-    vendors: seedVendors,
-    events: seedEvents,
+    // Production starts empty; create the admin with scripts/create-admin.js
+    users: isProd ? [] : seedUsers,
+    vendors: isProd ? [] : seedVendors,
+    events: isProd ? [] : seedEvents,
     payments: {},
     bookings: [],
     listings: [],
