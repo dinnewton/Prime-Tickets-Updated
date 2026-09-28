@@ -30,7 +30,7 @@ function buildTicketsHtml(tickets) {
         </td></tr>`;
 }
 
-function buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart, tickets = [] }) {
+function buildEmailHtml({ customerName, orderRef, paymentRef, amount, cart, tickets = [] }) {
   const rows = cart
     .map(
       (item) => `
@@ -77,7 +77,7 @@ function buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart, ticke
               <td style="color:#666;font-size:13px">Booking Reference</td>
               <td style="text-align:right;font-weight:700;color:#9a5332;font-size:16px;letter-spacing:1px">${esc(orderRef)}</td>
             </tr>
-            ${mpesaCode ? `<tr><td style="color:#666;font-size:13px;padding-top:8px">M-Pesa Code</td><td style="text-align:right;font-weight:600;padding-top:8px">${esc(mpesaCode)}</td></tr>` : ''}
+            ${paymentRef ? `<tr><td style="color:#666;font-size:13px;padding-top:8px">Payment Ref</td><td style="text-align:right;font-weight:600;padding-top:8px">${esc(paymentRef)}</td></tr>` : ''}
             <tr>
               <td style="color:#666;font-size:13px;padding-top:8px">Total Paid</td>
               <td style="text-align:right;font-weight:700;font-size:18px;color:#1a1a2e;padding-top:8px">Ksh ${Number(amount).toFixed(2)}</td>
@@ -158,7 +158,7 @@ async function sendMail({ to, subject, html, text, attachments }) {
   return true;
 }
 
-async function sendEmail({ customerEmail, customerName, orderRef, mpesaCode, amount, cart, bookings = [] }) {
+async function sendEmail({ customerEmail, customerName, orderRef, paymentRef, amount, cart, bookings = [] }) {
   // Same check-in link as the QR in My Tickets
   const tickets = await Promise.all(
     bookings.filter((b) => b.ticketCode).map(async (b, i) => ({
@@ -170,8 +170,8 @@ async function sendEmail({ customerEmail, customerName, orderRef, mpesaCode, amo
   await sendMail({
     to: customerEmail,
     subject: `Your tickets are confirmed — ${orderRef}`,
-    html: buildEmailHtml({ customerName, orderRef, mpesaCode, amount, cart, tickets }),
-    text: buildSmsText({ customerName, orderRef, mpesaCode, amount, cart }),
+    html: buildEmailHtml({ customerName, orderRef, paymentRef, amount, cart, tickets }),
+    text: buildSmsText({ customerName, orderRef, paymentRef, amount, cart }),
     attachments: tickets.map((t, i) => ({ filename: `ticket-${orderRef}-${i + 1}.png`, content: t.png, cid: t.cid })),
   });
 }
@@ -192,19 +192,19 @@ function getTwilioClient() {
   }
 }
 
-function buildSmsText({ customerName, orderRef, mpesaCode, amount, cart }) {
+function buildSmsText({ customerName, orderRef, paymentRef, amount, cart }) {
   const eventNames = [...new Set(cart.map((i) => i.eventTitle))].join(', ');
   return (
     `PrimeTickets ✓ Booking confirmed!\n` +
     `Ref: ${orderRef}\n` +
-    `${mpesaCode ? `M-Pesa: ${mpesaCode}\n` : ''}` +
+    `${paymentRef ? `Payment: ${paymentRef}\n` : ''}` +
     `Events: ${eventNames}\n` +
     `Total: Ksh ${Number(amount).toFixed(2)}\n` +
     `Show this message at the gate. Enjoy!`
   );
 }
 
-async function sendWhatsApp({ phone, customerName, orderRef, mpesaCode, amount, cart }) {
+async function sendWhatsApp({ phone, customerName, orderRef, paymentRef, amount, cart }) {
   if (!process.env.TWILIO_WHATSAPP_FROM) {
     console.log('[Notifications] WhatsApp skipped — TWILIO_WHATSAPP_FROM not configured');
     return;
@@ -223,13 +223,13 @@ async function sendWhatsApp({ phone, customerName, orderRef, mpesaCode, amount, 
   await client.messages.create({
     from: `whatsapp:${process.env.TWILIO_WHATSAPP_FROM}`,
     to: `whatsapp:${e164}`,
-    body: buildSmsText({ customerName, orderRef, mpesaCode, amount, cart }),
+    body: buildSmsText({ customerName, orderRef, paymentRef, amount, cart }),
   });
 
   console.log(`[Notifications] WhatsApp sent to ${e164}`);
 }
 
-async function sendSms({ phone, customerName, orderRef, mpesaCode, amount, cart }) {
+async function sendSms({ phone, customerName, orderRef, paymentRef, amount, cart }) {
   if (!process.env.TWILIO_SMS_FROM) {
     console.log('[Notifications] SMS skipped — TWILIO_SMS_FROM not configured');
     return;
@@ -247,7 +247,7 @@ async function sendSms({ phone, customerName, orderRef, mpesaCode, amount, cart 
   await client.messages.create({
     from: process.env.TWILIO_SMS_FROM,
     to: e164,
-    body: buildSmsText({ customerName, orderRef, mpesaCode, amount, cart }),
+    body: buildSmsText({ customerName, orderRef, paymentRef, amount, cart }),
   });
 
   console.log(`[Notifications] SMS sent to ${e164}`);
@@ -266,13 +266,13 @@ function normalisePhone(raw) {
 // ─── Main entry: fire all channels in parallel ────────────────────────────────
 
 async function sendTicketConfirmation(payment) {
-  const { customerEmail, customerName, phone, orderRef, mpesaCode, amount, cart, bookings } = payment;
+  const { customerEmail, customerName, phone, orderRef, paymentRef, amount, cart, bookings } = payment;
 
   const tasks = [];
 
   if (customerEmail) {
     tasks.push(
-      sendEmail({ customerEmail, customerName, orderRef, mpesaCode, amount, cart, bookings }).catch((e) =>
+      sendEmail({ customerEmail, customerName, orderRef, paymentRef, amount, cart, bookings }).catch((e) =>
         console.error('[Notifications] Email error:', e.message)
       )
     );
@@ -280,12 +280,12 @@ async function sendTicketConfirmation(payment) {
 
   if (phone) {
     tasks.push(
-      sendWhatsApp({ phone, customerName, orderRef, mpesaCode, amount, cart }).catch((e) =>
+      sendWhatsApp({ phone, customerName, orderRef, paymentRef, amount, cart }).catch((e) =>
         console.error('[Notifications] WhatsApp error:', e.message)
       )
     );
     tasks.push(
-      sendSms({ phone, customerName, orderRef, mpesaCode, amount, cart }).catch((e) =>
+      sendSms({ phone, customerName, orderRef, paymentRef, amount, cart }).catch((e) =>
         console.error('[Notifications] SMS error:', e.message)
       )
     );

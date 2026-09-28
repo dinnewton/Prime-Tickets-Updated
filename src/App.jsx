@@ -29,6 +29,7 @@ import AdminUsers from './pages/admin/Users';
 // Vendor pages
 import VendorLayout from './pages/vendor/VendorLayout';
 import CheckIn from './pages/checkin/CheckIn';
+import PaymentComplete from './pages/client/PaymentComplete';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 import VendorDashboard from './pages/vendor/Dashboard';
@@ -74,6 +75,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/events/:id" element={<EventDetail />} />
         <Route path="/checkout" element={<Checkout />} />
+        <Route path="/payment/complete" element={<PaymentComplete />} />
         <Route path="/confirmation" element={<Confirmation />} />
         <Route path="/my-tickets" element={<MyTickets />} />
         <Route path="/market" element={<Market />} />

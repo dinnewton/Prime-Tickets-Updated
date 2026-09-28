@@ -287,7 +287,7 @@ function BookingCard({ booking, onTransfer, onSell, onCancelListing, onShowQR, r
           <span>×{booking.quantity}</span>
           <span className="font-semibold text-gray-900">Ksh {booking.totalPrice?.toLocaleString()}</span>
           {booking.orderRef && <span className="text-xs text-gray-400">Ref: {booking.orderRef}</span>}
-          {booking.mpesaCode && <span className="text-xs text-gray-400">MPesa: {booking.mpesaCode}</span>}
+          {(booking.paymentRef || booking.mpesaCode) && <span className="text-xs text-gray-400">Payment: {booking.paymentRef || booking.mpesaCode}</span>}
           {booking.purchasedViaResale && (
             <span className="text-xs bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full">Resale purchase</span>
           )}

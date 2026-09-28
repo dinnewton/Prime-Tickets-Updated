@@ -51,7 +51,7 @@ router.post('/', authMiddleware, (req, res) => {
     quantity: booking.quantity,
     unitPrice: booking.unitPrice,
     totalPrice: booking.totalPrice,
-    mpesaCode: booking.mpesaCode,
+    paymentRef: booking.paymentRef || booking.mpesaCode,
     orderRef: booking.orderRef,
     customerName: recipient.name,
     customerEmail: recipient.email,
@@ -77,7 +77,7 @@ router.post('/', authMiddleware, (req, res) => {
     customerName: recipient.name,
     phone: null,
     orderRef: newBooking.orderRef,
-    mpesaCode: newBooking.mpesaCode,
+    paymentRef: newBooking.paymentRef,
     amount: newBooking.totalPrice,
     cart: [{
       eventTitle: newBooking.eventTitle,

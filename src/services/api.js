@@ -67,9 +67,9 @@ export const eventsApi = {
 
 // ─── Payments (M-Pesa) ────────────────────────────────────────────────────────
 export const paymentsApi = {
-  stkPush: (data) => request('POST', '/payments/mpesa/stk-push', data),
-  pollStatus: (checkoutRequestId) =>
-    request('GET', `/payments/mpesa/status/${checkoutRequestId}`),
+  // Returns { authorizationUrl, reference } — send the customer to that URL
+  init: (data) => request('POST', '/payments/paystack/init', data),
+  verify: (reference) => request('GET', `/payments/paystack/verify/${encodeURIComponent(reference)}`),
 };
 
 // ─── Bookings (current user) ──────────────────────────────────────────────────
@@ -82,7 +82,7 @@ export const marketApi = {
   list: () => request('GET', '/market'),
   createListing: (data) => request('POST', '/market/list', data),
   cancelListing: (id) => request('DELETE', `/market/${id}`),
-  buy: (id, phone) => request('POST', `/market/${id}/buy`, { phone }),
+  buy: (id) => request('POST', `/market/${id}/buy`, {}),
 };
 
 // ─── Door check-in (vendor / admin) ───────────────────────────────────────────

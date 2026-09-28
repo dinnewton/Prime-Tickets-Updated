@@ -1,7 +1,8 @@
 const router = require('express').Router();
 const db = require('../db/store');
 const { authMiddleware } = require('../middleware/auth');
-const { stkPush } = require('../services/mpesa');
+const paystack = require('../services/paystack');
+const { SITE_URL } = require('../services/notifications');
 
 /**
  * GET /api/market
@@ -83,67 +84,63 @@ router.delete('/:id', authMiddleware, (req, res) => {
 
 /**
  * POST /api/market/:id/buy
- * Authenticated: initiate M-Pesa purchase of a resale listing
- * Body: { phone }
+ * Authenticated: start a Paystack payment for a resale listing
+ * Returns { authorizationUrl, reference } — send the buyer to that URL
  */
 router.post('/:id/buy', authMiddleware, async (req, res) => {
-  const { phone } = req.body;
-  if (!phone) return res.status(400).json({ message: 'phone is required' });
+  if (!paystack.isConfigured()) {
+    return res.status(503).json({ message: 'Payments are not set up yet. Please try again later.' });
+  }
 
   const listing = db.getListingById(req.params.id);
   if (!listing) return res.status(404).json({ message: 'Listing not found' });
   if (listing.status !== 'active') return res.status(400).json({ message: 'This ticket is no longer available' });
   if (listing.sellerId === req.user.id) return res.status(400).json({ message: 'You cannot buy your own listing' });
 
-  const orderRef = `PTR${Date.now().toString().slice(-7)}`;
+  // Price comes from the listing in the database, never from the browser
+  const amount = listing.askingPrice;
+  const reference = `PTR${Date.now().toString().slice(-7)}${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
+
+  db.savePayment(reference, {
+    reference,
+    orderRef: reference,
+    provider: 'paystack',
+    type: 'resale',
+    listingId: listing.id,
+    userId: req.user.id,
+    phone: req.body?.phone,
+    amount,
+    cart: [{
+      eventId: listing.eventId,
+      eventTitle: listing.eventTitle,
+      eventDate: listing.eventDate,
+      eventTime: listing.eventTime,
+      venue: listing.venue,
+      image: listing.image,
+      ticketType: listing.ticketType,
+      quantity: listing.quantity,
+      price: amount,
+    }],
+    customerName: req.user.name,
+    customerEmail: req.user.email,
+    status: 'pending',
+    paymentRef: null,
+  });
 
   try {
-    const mpesaRes = await stkPush(phone, listing.askingPrice, orderRef, 'PrimeTickets Resale');
-
-    if (mpesaRes.ResponseCode !== '0') {
-      return res.status(502).json({ message: mpesaRes.ResponseDescription || 'M-Pesa request failed' });
-    }
-
-    // Save payment with resale metadata so the callback can handle it
-    db.savePayment(mpesaRes.CheckoutRequestID, {
-      checkoutRequestId: mpesaRes.CheckoutRequestID,
-      merchantRequestId: mpesaRes.MerchantRequestID,
-      orderRef,
-      phone,
-      amount: listing.askingPrice,
-      type: 'resale',
-      listingId: listing.id,
-      buyerId: req.user.id,
-      buyerName: req.user.name,
-      buyerEmail: req.user.email,
-      cart: [{
-        eventId: listing.eventId,
-        eventTitle: listing.eventTitle,
-        eventDate: listing.eventDate,
-        eventTime: listing.eventTime,
-        venue: listing.venue,
-        image: listing.image,
-        ticketType: listing.ticketType,
-        quantity: listing.quantity,
-        price: listing.askingPrice,
-      }],
-      customerName: req.user.name,
-      customerEmail: req.user.email,
-      status: 'pending',
-      mpesaCode: null,
+    const tx = await paystack.initializeTransaction({
+      email: req.user.email,
+      amount,
+      reference,
+      callbackUrl: `${SITE_URL}/payment/complete`,
+      metadata: { orderRef: reference, resaleListingId: listing.id, customerName: req.user.name },
     });
-
-    // Reserve listing so another buyer can't start a purchase simultaneously
-    db.updateListing(listing.id, { pendingCheckoutRequestId: mpesaRes.CheckoutRequestID });
-
-    res.json({
-      checkoutRequestId: mpesaRes.CheckoutRequestID,
-      orderRef,
-      message: 'STK push sent. Awaiting payment confirmation.',
-    });
+    res.json({ authorizationUrl: tx.authorization_url, reference, amount });
   } catch (err) {
-    console.error('Resale STK Push error:', err?.response?.data || err.message);
-    res.status(502).json({ message: err?.response?.data?.errorMessage || 'Could not initiate payment' });
+    const detail = err.response?.data?.message || err.message;
+    console.error('[Paystack] resale init failed:', detail);
+    db.updatePayment(reference, { status: 'failed', failureReason: detail });
+    res.status(502).json({ message: 'Could not start the payment. Please try again.' });
   }
 });
 

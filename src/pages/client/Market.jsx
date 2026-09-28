@@ -4,7 +4,7 @@ import { Tag, Calendar, MapPin, User, Search, X, CheckCircle, AlertCircle, Loade
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import useAuthStore from '../../store/authStore';
-import { marketApi, paymentsApi } from '../../services/api';
+import { marketApi } from '../../services/api';
 
 export default function Market() {
   const { isAuthenticated, user } = useAuthStore();
@@ -16,10 +16,8 @@ export default function Market() {
 
   // Buy modal
   const [buyModal, setBuyModal] = useState(null);
-  const [phone, setPhone] = useState('');
-  const [buyStep, setBuyStep] = useState('form'); // form | polling | done | error
+  const [buyStep, setBuyStep] = useState('form'); // form | redirecting | error
   const [buyMsg, setBuyMsg] = useState('');
-  const [checkoutId, setCheckoutId] = useState(null);
 
   useEffect(() => {
     marketApi.list()
@@ -28,43 +26,20 @@ export default function Market() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Poll M-Pesa status
-  useEffect(() => {
-    if (buyStep !== 'polling' || !checkoutId) return;
-    const id = setInterval(async () => {
-      try {
-        const res = await paymentsApi.pollStatus(checkoutId);
-        if (res.status === 'success') {
-          clearInterval(id);
-          setBuyStep('done');
-          setListings((prev) => prev.filter((l) => l.id !== buyModal?.id));
-        } else if (['failed', 'cancelled', 'timeout'].includes(res.status)) {
-          clearInterval(id);
-          setBuyStep('error');
-          setBuyMsg('Payment failed or was cancelled. Please try again.');
-        }
-      } catch {
-        // keep polling
-      }
-    }, 3000);
-    return () => clearInterval(id);
-  }, [buyStep, checkoutId, buyModal]);
-
   function openBuy(listing) {
     if (!isAuthenticated) { navigate('/login'); return; }
     setBuyModal(listing);
-    setPhone(user?.phone || '');
     setBuyStep('form');
     setBuyMsg('');
-    setCheckoutId(null);
   }
 
   async function submitBuy(e) {
     e.preventDefault();
-    setBuyStep('polling');
+    setBuyStep('redirecting');
     try {
-      const res = await marketApi.buy(buyModal.id, phone);
-      setCheckoutId(res.checkoutRequestId);
+      const res = await marketApi.buy(buyModal.id);
+      sessionStorage.setItem('pt-pending-payment', res.reference);
+      window.location.href = res.authorizationUrl;
     } catch (err) {
       setBuyStep('error');
       setBuyMsg(err.message);
@@ -199,27 +174,17 @@ export default function Market() {
 
             {buyStep === 'form' && (
               <form onSubmit={submitBuy} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">M-Pesa phone number</label>
-                  <input
-                    type="tel"
-                    required
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="07XXXXXXXX"
-                    className="input-field"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">You will receive an STK push on this number</p>
-                </div>
-                <button type="submit" className="btn-primary w-full">Pay Ksh {buyModal.askingPrice?.toLocaleString()} via M-Pesa</button>
+                <p className="text-sm text-gray-600">
+                  You'll finish payment on Paystack — M-Pesa or card — then come straight back with your ticket.
+                </p>
+                <button type="submit" className="btn-primary w-full">Pay Ksh {buyModal.askingPrice?.toLocaleString()}</button>
               </form>
             )}
 
-            {buyStep === 'polling' && (
+            {buyStep === 'redirecting' && (
               <div className="text-center py-6">
                 <Loader2 className="w-10 h-10 text-primary-600 animate-spin mx-auto mb-3" />
-                <p className="font-semibold text-gray-800">Waiting for M-Pesa confirmation...</p>
-                <p className="text-sm text-gray-500 mt-1">Check your phone and enter your M-Pesa PIN</p>
+                <p className="font-semibold text-gray-800">Taking you to Paystack...</p>
               </div>
             )}
 

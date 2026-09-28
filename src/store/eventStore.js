@@ -1,8 +1,10 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { eventsApi } from '../services/api';
 import { events as fallbackEvents } from '../data/events';
 
-const useEventStore = create((set, get) => ({
+// The cart is persisted so it survives a refresh and the trip to Paystack
+const useEventStore = create(persist((set, get) => ({
   events: fallbackEvents, // start with mock data so UI renders instantly
   loading: false,
   cart: [],
@@ -111,6 +113,10 @@ const useEventStore = create((set, get) => ({
     }
     set({ events: get().events.filter((e) => e.id !== id) });
   },
+}), {
+  name: 'prime-cart',
+  storage: createJSONStorage(() => localStorage),
+  partialize: (state) => ({ cart: state.cart }),
 }));
 
 export default useEventStore;

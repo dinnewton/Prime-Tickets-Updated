@@ -2,15 +2,14 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Calendar, MapPin, Clock, Users, ArrowLeft,
-  Share2, Heart, CheckCircle, Ticket, Star, Wifi, UserPlus, UserCheck,
+  Share2, Heart, CheckCircle, Ticket, Star, Wifi, UserPlus, UserCheck, Loader2,
 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
-import { getEventById } from '../../data/events';
 import { getVendorById } from '../../data/vendors';
 import useEventStore from '../../store/eventStore';
 import useAuthStore from '../../store/authStore';
-import { networkApi } from '../../services/api';
+import { networkApi, eventsApi } from '../../services/api';
 
 function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-ZA', {
@@ -28,17 +27,29 @@ function soldPercent(sold, total) {
 export default function EventDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const event = getEventById(id);
+  // Load from the API so direct links and refreshes work, not just clicks from Home
+  const [event, setEvent] = useState(null);
+  const [loadingEvent, setLoadingEvent] = useState(true);
   const { addToCart } = useEventStore();
   const { isAuthenticated, user } = useAuthStore();
 
-  const [selectedType, setSelectedType] = useState('standard');
+  const [selectedType, setSelectedType] = useState('regular');
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const [liked, setLiked] = useState(false);
 
   const [attendees, setAttendees] = useState([]);
   const [connectingId, setConnectingId] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingEvent(true);
+    eventsApi.get(id)
+      .then((e) => { if (!cancelled) setEvent(e); })
+      .catch(() => { if (!cancelled) setEvent(null); })
+      .finally(() => { if (!cancelled) setLoadingEvent(false); });
+    return () => { cancelled = true; };
+  }, [id]);
 
   useEffect(() => {
     if (!isAuthenticated || !id) return;
@@ -56,6 +67,18 @@ export default function EventDetail() {
     setConnectingId(null);
   }
 
+  if (loadingEvent) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center bg-gray-50">
+          <Loader2 className="w-10 h-10 text-primary-600 animate-spin" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   if (!event) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -71,7 +94,7 @@ export default function EventDetail() {
     );
   }
 
-  const vendor = getVendorById(event.vendorId);
+  const vendor = getVendorById(event.vendorId) || (event.vendorName ? { name: event.vendorName } : null);
   const sold = soldPercent(event.soldTickets, event.totalTickets);
   const price = selectedType === 'vip' ? event.vipPrice : event.price;
 
@@ -276,14 +299,14 @@ export default function EventDetail() {
                 <div className="space-y-3 mb-6">
                   <p className="text-sm font-semibold text-gray-700">Ticket Type</p>
 
-                  <label className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedType === 'standard' ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                  <label className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedType === 'regular' ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:border-gray-300'}`}>
                     <div className="flex items-center gap-3">
                       <input
                         type="radio"
                         name="ticketType"
-                        value="standard"
-                        checked={selectedType === 'standard'}
-                        onChange={() => setSelectedType('standard')}
+                        value="regular"
+                        checked={selectedType === 'regular'}
+                        onChange={() => setSelectedType('regular')}
                         className="accent-primary-600"
                       />
                       <div>
