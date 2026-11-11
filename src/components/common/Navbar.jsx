@@ -32,13 +32,13 @@ export default function Navbar() {
 
           {/* Desktop nav links */}
           <div className="hidden md:flex items-center gap-1">
-            <Link to="/" className="px-4 py-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg font-medium text-sm transition-all">
+            <Link to="/events" className="px-4 py-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg font-medium text-sm transition-all">
               Events
             </Link>
-            <Link to="/?category=Music" className="px-4 py-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg font-medium text-sm transition-all">
+            <Link to="/events?category=Music" className="px-4 py-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg font-medium text-sm transition-all">
               Music
             </Link>
-            <Link to="/?category=Sports" className="px-4 py-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg font-medium text-sm transition-all">
+            <Link to="/events?category=Sports" className="px-4 py-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg font-medium text-sm transition-all">
               Sports
             </Link>
             <Link to="/market" className="flex items-center gap-1.5 px-4 py-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg font-medium text-sm transition-all">
@@ -116,11 +116,11 @@ export default function Navbar() {
               <div className="flex items-center gap-2">
                 <Link
                   to="/login"
-                  className="px-4 py-2 text-sm font-semibold text-gray-700 hover:text-primary-600 transition-colors"
+                  className="hidden sm:block px-4 py-2 text-sm font-semibold text-gray-700 hover:text-primary-600 transition-colors"
                 >
                   Sign in
                 </Link>
-                <Link to="/register" className="btn-primary !py-2 !px-4 !text-sm">
+                <Link to="/register" className="btn-primary !py-2 !px-4 !text-sm whitespace-nowrap">
                   Sign up
                 </Link>
               </div>
@@ -140,10 +140,11 @@ export default function Navbar() {
         {menuOpen && (
           <div className="md:hidden border-t border-gray-100 py-4 space-y-1">
             {[
-              ['/', 'All Events'],
-              ['/?category=Music', 'Music'],
-              ['/?category=Sports', 'Sports'],
+              ['/events', 'All Events'],
+              ['/events?category=Music', 'Music'],
+              ['/events?category=Sports', 'Sports'],
               ['/market', 'Resale Market'],
+              ['/help', 'Help'],
               ...(isAuthenticated ? [['/my-tickets', 'My Tickets'], ['/network', 'Network']] : []),
             ].map(([path, label]) => (
               <Link

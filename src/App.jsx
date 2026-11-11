@@ -6,6 +6,12 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 // Client pages
 import Home from './pages/client/Home';
+import Events from './pages/client/Events';
+import Help from './pages/info/Help';
+import Refunds from './pages/info/Refunds';
+import Terms from './pages/info/Terms';
+import Privacy from './pages/info/Privacy';
+import MobileNav from './components/common/MobileNav';
 import EventDetail from './pages/client/EventDetail';
 import Checkout from './pages/client/Checkout';
 import Confirmation from './pages/client/Confirmation';
@@ -70,10 +76,16 @@ export default function App() {
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
     <BrowserRouter>
       <ClientChatWidget />
+      <MobileNav />
       <Routes>
         {/* Public / Client */}
         <Route path="/" element={<Home />} />
+        <Route path="/events" element={<Events />} />
         <Route path="/events/:id" element={<EventDetail />} />
+        <Route path="/help" element={<Help />} />
+        <Route path="/refunds" element={<Refunds />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/payment/complete" element={<PaymentComplete />} />
         <Route path="/confirmation" element={<Confirmation />} />

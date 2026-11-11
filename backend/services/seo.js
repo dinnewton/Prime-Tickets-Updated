@@ -149,8 +149,10 @@ function robotsTxt(_req, res) {
 function sitemapXml(_req, res) {
   const urls = [
     { loc: `${SITE_URL}/`, changefreq: 'daily', priority: '1.0' },
+    { loc: `${SITE_URL}/events`, changefreq: 'daily', priority: '0.9' },
     { loc: `${SITE_URL}/market`, changefreq: 'daily', priority: '0.6' },
     { loc: `${SITE_URL}/vendor/register`, changefreq: 'monthly', priority: '0.6' },
+    ...['help', 'refunds', 'terms', 'privacy'].map((p) => ({ loc: `${SITE_URL}/${p}`, changefreq: 'monthly', priority: '0.3' })),
     ...db.getEvents()
       .filter((e) => !e.hiddenFromHome && isUpcoming(e))
       .map((e) => ({ loc: `${SITE_URL}/events/${encodeURIComponent(e.id)}`, changefreq: 'daily', priority: '0.8' })),

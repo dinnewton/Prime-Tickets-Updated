@@ -35,7 +35,7 @@ export default function EventCard({ event }) {
   return (
     <Link
       to={`/events/${event.id}`}
-      className="card block group cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+      className="card flex flex-col h-full group cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
     >
       {/* Image with floating date badge */}
       <div className="relative overflow-hidden h-48">
@@ -67,7 +67,7 @@ export default function EventCard({ event }) {
       </div>
 
       {/* Content */}
-      <div className="p-5">
+      <div className="p-5 flex flex-col flex-1">
         <h3 className="font-bold text-gray-900 text-lg leading-snug mb-3 group-hover:text-primary-700 transition-colors line-clamp-2">
           {event.title}
         </h3>
@@ -105,14 +105,14 @@ export default function EventCard({ event }) {
         )}
 
         {/* Price & CTA */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-end justify-between gap-2 mt-auto">
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">From</p>
-            <p className="text-2xl font-black text-gray-900">
+            <p className="text-xl font-black text-gray-900 whitespace-nowrap">
               Ksh {Number(event.price).toLocaleString()}
             </p>
           </div>
-          <span className={`btn-primary !py-2.5 !px-5 !text-sm ${event.status === 'sold_out' ? '!bg-gray-300 !shadow-none' : ''}`}>
+          <span className={`btn-primary !py-2.5 !px-4 !text-sm whitespace-nowrap shrink-0 ${event.status === 'sold_out' ? '!bg-gray-300 !shadow-none' : ''}`}>
             {event.status === 'sold_out' ? 'Sold Out' : 'Get Tickets'}
           </span>
         </div>

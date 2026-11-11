@@ -7,6 +7,9 @@ export const categories = [
   'Food & Drink',
   'Tech & Business',
   'Festivals',
+  'Nightlife',
+  'Wellness',
+  'Conference',
 ];
 
 export const events = [

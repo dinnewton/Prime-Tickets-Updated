@@ -67,11 +67,11 @@ export default function Footer() {
             <h4 className="font-semibold text-white mb-4">Quick Links</h4>
             <ul className="space-y-2 text-sm">
               {[
-                { label: 'Browse Events', to: '/' },
-                { label: 'Music', to: '/?category=Music' },
-                { label: 'Sports', to: '/?category=Sports' },
-                { label: 'Comedy', to: '/?category=Comedy' },
-                { label: 'Arts & Theatre', to: '/?category=Arts+%26+Theatre' },
+                { label: 'Browse Events', to: '/events' },
+                { label: 'This Weekend', to: '/events?when=weekend' },
+                { label: 'Music', to: '/events?category=Music' },
+                { label: 'Sports', to: '/events?category=Sports' },
+                { label: 'Comedy', to: '/events?category=Comedy' },
                 { label: 'Resale Market', to: '/market' },
               ].map((link) => (
                 <li key={link.label}>
@@ -91,6 +91,7 @@ export default function Footer() {
                 { label: 'List Your Event', to: '/vendor/register' },
                 { label: 'Vendor Login', to: '/login' },
                 { label: 'Door Check-in', to: '/checkin' },
+                { label: 'Help Centre', to: '/help' },
               ].map((link) => (
                 <li key={link.label}>
                   <Link to={link.to} className="hover:text-primary-400 transition-colors">
@@ -124,8 +125,13 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-gray-800 mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
-          <p>© {new Date().getFullYear()} {s.copyright}. All rights reserved.</p>
-          <p>Payments secured by Paystack · M-Pesa, Visa &amp; Mastercard</p>
+          <p>© {new Date().getFullYear()} {s.copyright}. All rights reserved. Payments secured by Paystack.</p>
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+            <Link to="/help" className="hover:text-primary-400 transition-colors">Help</Link>
+            <Link to="/refunds" className="hover:text-primary-400 transition-colors">Refunds</Link>
+            <Link to="/terms" className="hover:text-primary-400 transition-colors">Terms</Link>
+            <Link to="/privacy" className="hover:text-primary-400 transition-colors">Privacy</Link>
+          </div>
         </div>
       </div>
     </footer>

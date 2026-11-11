@@ -74,7 +74,7 @@ export default function ChatWidget() {
     <>
       {/* Chat panel */}
       {open && !minimised && (
-        <div className="fixed bottom-20 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] max-w-sm shadow-2xl rounded-2xl overflow-hidden flex flex-col border border-gray-200 bg-white"
+        <div className="chat-window fixed bottom-20 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] max-w-sm shadow-2xl rounded-2xl overflow-hidden flex flex-col border border-gray-200 bg-white"
           style={{ height: '480px' }}>
 
           {/* Header */}
@@ -170,7 +170,7 @@ export default function ChatWidget() {
       {/* Floating button */}
       <button
         onClick={handleOpen}
-        className="fixed bottom-4 right-4 sm:right-6 z-50 w-14 h-14 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg shadow-primary-600/40 flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+        className="chat-launcher fixed bottom-4 right-4 sm:right-6 z-50 w-14 h-14 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg shadow-primary-600/40 flex items-center justify-center transition-all hover:scale-105 active:scale-95"
         aria-label="Open support chat"
       >
         {open && !minimised ? (

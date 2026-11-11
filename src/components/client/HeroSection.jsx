@@ -33,10 +33,10 @@ function BrandHero() {
           </p>
 
           <div className="flex items-center gap-3 flex-wrap mb-10">
-            <a href="#events" className="btn-primary !py-3.5 !px-8 !bg-accent-500 hover:!bg-accent-600 !shadow-accent-500/30 group">
+            <Link to="/events" className="btn-primary !py-3.5 !px-8 !bg-accent-500 hover:!bg-accent-600 !shadow-accent-500/30 group">
               Browse Events
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </a>
+            </Link>
             <Link to="/vendor/register" className="btn-secondary !py-3.5 !px-8 !bg-white/10 !text-white !border-white/30 hover:!bg-white/20">
               Sell Tickets for Your Event
             </Link>
@@ -183,14 +183,14 @@ export default function HeroSection() {
           <button
             onClick={prev}
             aria-label="Previous event"
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white flex items-center justify-center transition-all hover:scale-110"
+            className="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white items-center justify-center transition-all hover:scale-110"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
           <button
             onClick={next}
             aria-label="Next event"
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white flex items-center justify-center transition-all hover:scale-110"
+            className="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white items-center justify-center transition-all hover:scale-110"
           >
             <ChevronRight className="w-6 h-6" />
           </button>

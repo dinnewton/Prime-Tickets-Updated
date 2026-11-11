@@ -79,6 +79,13 @@
   }
 }
 
+/* Phones: leave room for the bottom navigation bar (MobileNav) */
+@media (max-width: 767px) {
+  body.has-mobile-nav { padding-bottom: calc(4rem + env(safe-area-inset-bottom)); }
+  body.has-mobile-nav .chat-launcher { bottom: calc(5rem + env(safe-area-inset-bottom)); }
+  body.has-mobile-nav .chat-window { bottom: calc(9rem + env(safe-area-inset-bottom)); }
+}
+
 @layer utilities {
   .text-gradient {
     @apply bg-gradient-to-r from-primary-400 to-accent-400 bg-clip-text text-transparent;
