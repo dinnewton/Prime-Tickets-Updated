@@ -142,6 +142,9 @@ io.on('connection', (socket) => {
       io.to('admin-room').emit('chat:vendor_disconnected', { vendorId });
     } else if (role !== 'admin') {
       io.to('admin-room').emit('chat:visitor_disconnected', { sessionId });
+      // Most visitors never type anything; don't keep an empty chat for each
+      // of them (unless another of their tabs is still open)
+      if (!io.sockets.adapter.rooms.get(sessionId)?.size) chat.forgetIfEmpty(sessionId);
     }
   });
 });
@@ -151,11 +154,20 @@ app.set('io', io);
 
 // ─── Rate limiting ─────────────────────────────────────────────────────────────
 // Door scanning is one device making many requests, so it gets its own higher limit
-const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false, skip: (req) => req.path.startsWith('/checkin') || req.path === '/payments/paystack/webhook' });
+// Mobile networks, offices and campuses put many people behind one address,
+// so limits per address are generous for plain browsing and strict only where
+// abuse costs something.
+const isBrowsing = (req) => req.method === 'GET' && (req.path.startsWith('/events') || req.path.startsWith('/settings') || req.path === '/market' || req.path === '/health');
+const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 600, standardHeaders: true, legacyHeaders: false, skip: (req) => isBrowsing(req) || req.path.startsWith('/checkin') || req.path === '/payments/paystack/webhook' });
+const browseLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 6000, standardHeaders: true, legacyHeaders: false, skip: (req) => !isBrowsing(req) });
 const checkinLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 3000, standardHeaders: true, legacyHeaders: false });
-const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { message: 'Too many login attempts, try again in 15 minutes' } });
-const resetLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: { message: 'Too many password reset attempts, try again in 15 minutes' } });
-const payLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 15, message: { message: 'Too many payment attempts, try again in 15 minutes' } });
+// Password guessing is limited per account from each address (10 tries), with
+// a wider cap per address so a crowd on one network can still all sign in
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { message: 'Too many login attempts, try again in 15 minutes' },
+  keyGenerator: (req) => `${req.ip}|${String(req.body?.email || '').trim().toLowerCase().slice(0, 120)}` });
+const loginAddressLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 150, message: { message: 'Too many login attempts from this network, try again in 15 minutes' } });
+const resetLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { message: 'Too many password reset attempts, try again in 15 minutes' } });
+const payLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, message: { message: 'Too many payment attempts, try again in 15 minutes' }, skip: (req) => req.method === 'GET' });
 
 // ─── Middleware ────────────────────────────────────────────────────────────────
 if (!isProd) {
@@ -166,7 +178,8 @@ app.use('/api/payments/paystack/webhook', express.raw({ type: '*/*', limit: '1mb
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/api/', apiLimiter);
-app.use('/api/auth/login', loginLimiter);
+app.use('/api/', browseLimiter);
+app.use(['/api/auth/login', '/api/auth/vendor/login'], loginAddressLimiter, loginLimiter);
 app.use(['/api/auth/forgot-password', '/api/auth/reset-password'], resetLimiter);
 app.use(['/api/payments/paystack/init', '/api/market'], payLimiter);
 app.use('/api/checkin', checkinLimiter);
@@ -226,6 +239,8 @@ if (isProd) {
 
 // ─── Error handler ────────────────────────────────────────────────────────────
 app.use((err, _req, res, _next) => {
+  // Errors that carry their own status (e.g. 503 when sign-ins are queued up) are safe to show
+  if (err.status === 503) return res.status(503).json({ message: err.message });
   console.error('Unhandled error:', err);
   res.status(500).json({ message: 'Internal server error' });
 });

@@ -1,5 +1,8 @@
 const router = require('express').Router();
-const bcrypt = require('bcryptjs');
+const passwords = require('../services/passwords');
+
+// Express 4 does not catch errors thrown inside async handlers; hand them to the error handler
+const safe = (handler) => (req, res, next) => handler(req, res, next).catch(next);
 const jwt = require('jsonwebtoken');
 const db = require('../db/store');
 const { sendPasswordResetEmail, SITE_URL } = require('../services/notifications');
@@ -14,14 +17,14 @@ function safeUser(u) {
 }
 
 // POST /api/auth/login  — client or admin
-router.post('/login', (req, res) => {
+router.post('/login', safe(async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
 
   const user = db.getUserByEmail(email);
   if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
-  const valid = bcrypt.compareSync(password, user.password);
+  const valid = await passwords.compare(password, user.password);
   if (!valid) return res.status(401).json({ message: 'Invalid credentials' });
 
   if (user.status === 'suspended') {
@@ -30,17 +33,17 @@ router.post('/login', (req, res) => {
 
   const token = signToken({ id: user.id, email: user.email, role: user.role, name: user.name });
   res.json({ token, user: safeUser(user) });
-});
+}));
 
 // POST /api/auth/vendor/login
-router.post('/vendor/login', (req, res) => {
+router.post('/vendor/login', safe(async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
 
   const vendor = db.getVendorByEmail(email);
   if (!vendor) return res.status(401).json({ message: 'Invalid credentials' });
 
-  const valid = bcrypt.compareSync(password, vendor.password);
+  const valid = await passwords.compare(password, vendor.password);
   if (!valid) return res.status(401).json({ message: 'Invalid credentials' });
 
   if (vendor.status === 'suspended') {
@@ -49,7 +52,7 @@ router.post('/vendor/login', (req, res) => {
 
   const token = signToken({ id: vendor.id, email: vendor.email, role: 'vendor', name: vendor.name });
   res.json({ token, vendor: safeUser(vendor) });
-});
+}));
 
 // ─── Password reset ───────────────────────────────────────────────────────────
 const lastResetEmail = new Map(); // email → time last sent, to stop inbox flooding
@@ -80,7 +83,7 @@ router.post('/forgot-password', async (req, res) => {
 });
 
 // POST /api/auth/reset-password { token, password }
-router.post('/reset-password', (req, res) => {
+router.post('/reset-password', safe(async (req, res) => {
   const { token, password } = req.body || {};
   if (!password || String(password).length < 8) {
     return res.status(400).json({ message: 'Password must be at least 8 characters' });
@@ -89,31 +92,33 @@ router.post('/reset-password', (req, res) => {
   if (!reset) {
     return res.status(400).json({ message: 'This reset link is invalid or has expired. Please request a new one.' });
   }
-  const update = { password: bcrypt.hashSync(String(password), 10), passwordChangedAt: Date.now() };
+  const update = { password: await passwords.hash(password), passwordChangedAt: Date.now() };
   const updated = reset.kind === 'vendor'
     ? db.updateVendor(reset.accountId, update)
     : db.updateUser(reset.accountId, update);
   if (!updated) return res.status(400).json({ message: 'Account no longer exists' });
 
   res.json({ message: 'Password updated. You can now sign in.', role: reset.kind === 'vendor' ? 'vendor' : updated.role });
-});
+}));
 
 // POST /api/auth/register — new client account
-router.post('/register', async (req, res) => {
+router.post('/register', safe(async (req, res) => {
   const { name, email, password } = req.body;
   if (!name || !email || !password) return res.status(400).json({ message: 'All fields required' });
 
   if (db.getUserByEmail(email)) return res.status(409).json({ message: 'Email already registered' });
 
-  const hashed = bcrypt.hashSync(password, 10);
+  const hashed = await passwords.hash(password);
+  // Checked again: a second sign-up with the same email may have finished while we hashed
+  if (db.getUserByEmail(email)) return res.status(409).json({ message: 'Email already registered' });
   const user = db.createUser({ name, email, password: hashed, role: 'client' });
 
   const token = signToken({ id: user.id, email: user.email, role: user.role, name: user.name });
   res.status(201).json({ token, user: safeUser(user) });
-});
+}));
 
 // POST /api/auth/vendor/register — new vendor application
-router.post('/vendor/register', async (req, res) => {
+router.post('/vendor/register', safe(async (req, res) => {
   const { name, ownerName, email, password, phone, category, description } = req.body;
   if (!name || !ownerName || !email || !password || !phone) {
     return res.status(400).json({ message: 'All required fields must be filled' });
@@ -121,7 +126,8 @@ router.post('/vendor/register', async (req, res) => {
 
   if (db.getVendorByEmail(email)) return res.status(409).json({ message: 'Email already registered' });
 
-  const hashed = bcrypt.hashSync(password, 10);
+  const hashed = await passwords.hash(password);
+  if (db.getVendorByEmail(email)) return res.status(409).json({ message: 'Email already registered' });
   const vendor = db.createVendor({ name, ownerName, email, password: hashed, phone, category, description });
 
   const token = signToken({ id: vendor.id, email: vendor.email, role: 'vendor', name: vendor.name });
@@ -139,7 +145,7 @@ router.post('/vendor/register', async (req, res) => {
   }
 
   res.status(201).json({ token, vendor: safeUser(vendor) });
-});
+}));
 
 // PATCH /api/auth/profile — update networking profile fields
 const { authMiddleware } = require('../middleware/auth');
@@ -182,7 +188,7 @@ router.post('/google', async (req, res) => {
         name,
         email,
         googleId,
-        password: bcrypt.hashSync(googleId + process.env.JWT_SECRET, 10), // unusable password
+        password: await passwords.hash(googleId + process.env.JWT_SECRET), // unusable password
         role: 'client',
       });
     } else if (!user.googleId) {
