@@ -24,14 +24,17 @@ export default function PaymentComplete() {
 
     const check = async () => {
       try {
-        const res = await paymentsApi.verify(reference);
+        // The key is only sent for the payment it was issued for
+        const [keyRef, key] = (sessionStorage.getItem('pt-payment-key') || '').split(':');
+        const res = await paymentsApi.verify(reference, keyRef === reference ? key : undefined);
         if (stop) return;
         if (res.status === 'success') {
           sessionStorage.removeItem('pt-pending-payment');
+          sessionStorage.removeItem('pt-payment-key');
           clearCart();
           navigate('/confirmation', {
             replace: true,
-            state: { ref: res.orderRef, total: res.amount, email: res.email, cart: res.cart, paymentRef: res.paymentRef },
+            state: { ref: res.orderRef, total: res.amount, email: res.email, cart: res.cart, paymentRef: res.paymentRef, tickets: res.tickets || [] },
           });
           return;
         }

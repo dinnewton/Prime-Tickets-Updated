@@ -45,6 +45,7 @@ export default function Checkout() {
       });
       // Remember the order so the return page can finish up even on a new tab
       sessionStorage.setItem('pt-pending-payment', res.reference);
+      if (res.accessKey) sessionStorage.setItem('pt-payment-key', `${res.reference}:${res.accessKey}`);
       window.location.href = res.authorizationUrl;
     } catch (err) {
       setError(err.message || 'Could not start the payment. Please try again.');

@@ -1,14 +1,31 @@
 import { useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { CheckCircle, Download, Home, Ticket, Users, X, Wifi, QrCode } from 'lucide-react';
+import { CheckCircle, Download, Home, Ticket, Users, X, Wifi, QrCode, Loader2 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import useAuthStore from '../../store/authStore';
+import { downloadTickets } from '../../utils/ticketImage';
 
 export default function Confirmation() {
   const { state } = useLocation();
   const { isAuthenticated } = useAuthStore();
   const [networkDismissed, setNetworkDismissed] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
+
+  const tickets = state?.tickets || [];
+
+  const handleDownload = async () => {
+    setDownloadError('');
+    setDownloading(true);
+    try {
+      await downloadTickets(tickets);
+    } catch {
+      setDownloadError('We could not save your tickets on this device. They are also in your email.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const ref = state?.ref || `PT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
   const events = state?.cart
@@ -120,15 +137,29 @@ export default function Confirmation() {
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button className="btn-primary w-full sm:w-auto justify-center">
-              <Download className="w-5 h-5" />
-              Download Tickets
-            </button>
+            {tickets.length > 0 ? (
+              <button
+                onClick={handleDownload}
+                disabled={downloading}
+                className="btn-primary w-full sm:w-auto justify-center disabled:opacity-60"
+              >
+                {downloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                {tickets.length === 1 ? 'Download Ticket' : `Download ${tickets.length} Tickets`}
+              </button>
+            ) : isAuthenticated && (
+              <Link to="/my-tickets" className="btn-primary w-full sm:w-auto justify-center">
+                <Download className="w-5 h-5" />
+                Download from My Tickets
+              </Link>
+            )}
             <Link to="/" className="btn-secondary w-full sm:w-auto justify-center">
               <Home className="w-5 h-5" />
               Back to Events
             </Link>
           </div>
+          {downloadError && (
+            <p className="mt-4 text-sm text-red-600 text-center">{downloadError}</p>
+          )}
         </div>
       </main>
       <Footer />

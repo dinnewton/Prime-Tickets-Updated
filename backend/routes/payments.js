@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const crypto = require('crypto');
 const db = require('../db/store');
 const paystack = require('../services/paystack');
 const { authMiddleware, optionalAuth, requireRole } = require('../middleware/auth');
@@ -177,10 +178,14 @@ router.post('/paystack/init', optionalAuth, async (req, res) => {
   }
 
   const reference = `PT${Date.now().toString().slice(-8)}${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
+  // Secret known only to the buyer's browser. The order reference is printed
+  // on receipts, so it must not be enough on its own to fetch ticket QR codes.
+  const accessKey = crypto.randomBytes(24).toString('hex');
 
   db.savePayment(reference, {
     reference,
     orderRef: reference,
+    accessKey,
     provider: 'paystack',
     userId: req.user && req.user.role !== 'vendor' ? req.user.id : null,
     phone,
@@ -209,6 +214,7 @@ router.post('/paystack/init', optionalAuth, async (req, res) => {
     res.json({
       authorizationUrl: tx.authorization_url,
       reference,
+      accessKey,
       amount: priced.total,
       subtotal: priced.subtotal,
       serviceFee: priced.serviceFee,
@@ -267,14 +273,33 @@ router.get('/paystack/verify/:reference', optionalAuth, async (req, res) => {
   const payment = db.getPayment(req.params.reference);
   if (!payment) return res.status(404).json({ message: 'We could not find that payment' });
 
-  const summary = () => ({
-    status: db.getPayment(payment.reference).status,
-    orderRef: payment.orderRef,
-    amount: payment.amount,
-    email: payment.customerEmail,
-    cart: payment.cart,
-    paymentRef: db.getPayment(payment.reference).paymentRef,
-  });
+  // Ticket QR codes go only to the buyer: the browser that started the
+  // payment (it holds the access key) or the signed-in account that paid
+  const key = String(req.query.key || '');
+  const hasKey = !!payment.accessKey && key.length === payment.accessKey.length &&
+    crypto.timingSafeEqual(Buffer.from(key), Buffer.from(payment.accessKey));
+  const isOwner = !!req.user && !!payment.userId && req.user.id === payment.userId;
+
+  const tickets = () => db.getBookings()
+    .filter((b) => b.orderRef === payment.orderRef && b.status === 'active' && b.ticketCode)
+    .map((b) => ({
+      ticketCode: b.ticketCode, orderRef: b.orderRef, eventTitle: b.eventTitle, eventDate: b.eventDate,
+      eventTime: b.eventTime, venue: b.venue, ticketType: b.ticketType, quantity: b.quantity,
+      customerName: b.customerName,
+    }));
+
+  const summary = () => {
+    const current = db.getPayment(payment.reference);
+    return {
+      status: current.status,
+      orderRef: payment.orderRef,
+      amount: payment.amount,
+      email: payment.customerEmail,
+      cart: payment.cart,
+      paymentRef: current.paymentRef,
+      ...(current.status === 'success' && (hasKey || isOwner) ? { tickets: tickets() } : {}),
+    };
+  };
 
   if (payment.status === 'success') return res.json(summary());
 

@@ -69,7 +69,8 @@ export const eventsApi = {
 export const paymentsApi = {
   // Returns { authorizationUrl, reference } — send the customer to that URL
   init: (data) => request('POST', '/payments/paystack/init', data),
-  verify: (reference) => request('GET', `/payments/paystack/verify/${encodeURIComponent(reference)}`),
+  // key: the accessKey from init — lets the buyer's browser receive the ticket QR codes
+  verify: (reference, key) => request('GET', `/payments/paystack/verify/${encodeURIComponent(reference)}${key ? `?key=${encodeURIComponent(key)}` : ''}`),
 };
 
 // ─── Bookings (current user) ──────────────────────────────────────────────────

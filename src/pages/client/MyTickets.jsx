@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Ticket, ArrowRightLeft, Tag, X, CheckCircle, AlertCircle, Clock, Loader2, Wifi, QrCode } from 'lucide-react';
+import { Ticket, ArrowRightLeft, Tag, X, CheckCircle, AlertCircle, Clock, Loader2, Wifi, QrCode, Download } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import TicketQR from '../../components/tickets/TicketQR';
+import { downloadTickets } from '../../utils/ticketImage';
 import useAuthStore from '../../store/authStore';
 import { bookingsApi, transfersApi, marketApi } from '../../services/api';
 
@@ -34,6 +35,16 @@ export default function MyTickets() {
   const [sellMsg, setSellMsg] = useState(null);
 
   const [qrModal, setQrModal] = useState(null); // booking
+  const [downloadError, setDownloadError] = useState('');
+
+  async function downloadTicket(booking) {
+    setDownloadError('');
+    try {
+      await downloadTickets([booking]);
+    } catch {
+      setDownloadError('Could not save the ticket on this device. Take a screenshot of the QR code instead.');
+    }
+  }
 
   useEffect(() => {
     if (!isAuthenticated) { navigate('/login'); return; }
@@ -200,7 +211,7 @@ export default function MyTickets() {
 
       {/* Ticket QR Modal */}
       {qrModal && (
-        <Modal title="Your Ticket" onClose={() => setQrModal(null)}>
+        <Modal title="Your Ticket" onClose={() => { setQrModal(null); setDownloadError(''); }}>
           <div className="text-center">
             <p className="font-bold text-gray-900">{qrModal.eventTitle}</p>
             <p className="text-sm text-gray-500 mb-4">
@@ -214,6 +225,15 @@ export default function MyTickets() {
                 {qrModal.checkedIn} of {qrModal.quantity} already checked in
               </p>
             )}
+            <div className="mt-4">
+              <button
+                onClick={() => downloadTicket(qrModal)}
+                className="inline-flex items-center gap-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 px-5 py-2.5 rounded-xl transition-colors"
+              >
+                <Download className="w-4 h-4" /> Download ticket
+              </button>
+              {downloadError && <p className="mt-2 text-xs text-red-600">{downloadError}</p>}
+            </div>
             <p className="mt-4 text-xs text-gray-500 leading-relaxed">
               Show this code at the entrance. Each ticket can only be scanned in once —
               don't share screenshots of it. Ref: {qrModal.orderRef}
