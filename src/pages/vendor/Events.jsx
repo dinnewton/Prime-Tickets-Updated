@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Eye, Calendar, Users } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
@@ -5,7 +6,8 @@ import useEventStore from '../../store/eventStore';
 
 export default function VendorEvents() {
   const { user } = useAuthStore();
-  const { events, deleteEvent } = useEventStore();
+  const { events, deleteEvent, fetchEvents } = useEventStore();
+  useEffect(() => { fetchEvents(); }, []);
   const vendorId = user?.vendorId || 'v1';
   const myEvents = events.filter((e) => e.vendorId === vendorId);
 

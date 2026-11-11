@@ -5,8 +5,8 @@ import Logo from './Logo';
 
 const DEFAULTS = {
   tagline: 'Your premier destination for live events across Kenya. Concerts, sport, theatre, and more — all in one place.',
-  email: 'support@primetickets.co.ke',
-  phone: '0800 PRIME (77463)',
+  email: 'support@primeticketsoko.com',
+  phone: '',
   address: 'Westlands, Nairobi, Kenya',
   copyright: 'PrimeTickets Ltd',
   facebook: '',
@@ -43,14 +43,16 @@ export default function Footer() {
             </Link>
             <p className="text-sm leading-relaxed">{s.tagline}</p>
             <div className="flex items-center gap-3 pt-2">
-              {SOCIAL.map(({ key, Icon }) => {
+              {/* Only networks the admin has filled in under Footer settings */}
+              {SOCIAL.filter(({ key }) => s[key]).map(({ key, Icon }) => {
                 const href = s[key];
                 return (
                   <a
                     key={key}
-                    href={href || '#'}
-                    target={href ? '_blank' : undefined}
+                    href={href}
+                    target="_blank"
                     rel="noopener noreferrer"
+                    aria-label={key}
                     className="w-9 h-9 rounded-xl bg-gray-800 hover:bg-primary-600 flex items-center justify-center transition-colors"
                   >
                     <Icon className="w-4 h-4" />
@@ -70,6 +72,7 @@ export default function Footer() {
                 { label: 'Sports', to: '/?category=Sports' },
                 { label: 'Comedy', to: '/?category=Comedy' },
                 { label: 'Arts & Theatre', to: '/?category=Arts+%26+Theatre' },
+                { label: 'Resale Market', to: '/market' },
               ].map((link) => (
                 <li key={link.label}>
                   <Link to={link.to} className="hover:text-primary-400 transition-colors">
@@ -87,9 +90,7 @@ export default function Footer() {
               {[
                 { label: 'List Your Event', to: '/vendor/register' },
                 { label: 'Vendor Login', to: '/login' },
-                { label: 'Pricing', to: '#' },
-                { label: 'Help Centre', to: '#' },
-                { label: 'Terms of Service', to: '#' },
+                { label: 'Door Check-in', to: '/checkin' },
               ].map((link) => (
                 <li key={link.label}>
                   <Link to={link.to} className="hover:text-primary-400 transition-colors">
@@ -106,12 +107,14 @@ export default function Footer() {
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-3">
                 <Mail className="w-4 h-4 mt-0.5 text-primary-400 shrink-0" />
-                <span>{s.email}</span>
+                <a href={`mailto:${s.email}`} className="hover:text-primary-400 transition-colors">{s.email}</a>
               </li>
-              <li className="flex items-start gap-3">
-                <Phone className="w-4 h-4 mt-0.5 text-primary-400 shrink-0" />
-                <span>{s.phone}</span>
-              </li>
+              {s.phone && (
+                <li className="flex items-start gap-3">
+                  <Phone className="w-4 h-4 mt-0.5 text-primary-400 shrink-0" />
+                  <a href={`tel:${s.phone.replace(/[^+d]/g, '')}`} className="hover:text-primary-400 transition-colors">{s.phone}</a>
+                </li>
+              )}
               <li className="flex items-start gap-3">
                 <MapPin className="w-4 h-4 mt-0.5 text-primary-400 shrink-0" />
                 <span>{s.address}</span>
@@ -122,11 +125,7 @@ export default function Footer() {
 
         <div className="border-t border-gray-800 mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
           <p>© {new Date().getFullYear()} {s.copyright}. All rights reserved.</p>
-          <div className="flex items-center gap-4">
-            <a href="#" className="hover:text-primary-400 transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-primary-400 transition-colors">Terms of Use</a>
-            <a href="#" className="hover:text-primary-400 transition-colors">Cookie Policy</a>
-          </div>
+          <p>Payments secured by Paystack · M-Pesa, Visa &amp; Mastercard</p>
         </div>
       </div>
     </footer>

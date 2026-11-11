@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Plus, Pencil, Trash2, Calendar, MapPin, X } from 'lucide-react';
 import useEventStore from '../../store/eventStore';
 import { vendors } from '../../data/vendors';
@@ -15,7 +15,8 @@ const emptyForm = {
 };
 
 export default function AdminEvents() {
-  const { events, addEvent, updateEvent, deleteEvent } = useEventStore();
+  const { events, addEvent, updateEvent, deleteEvent, fetchEvents } = useEventStore();
+  useEffect(() => { fetchEvents(); }, []);
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);

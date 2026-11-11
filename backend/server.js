@@ -211,9 +211,15 @@ app.get('/api/health', (_req, res) => {
 });
 
 // ─── Serve React (production) ─────────────────────────────────────────────────
+const seo = require('./services/seo');
+app.get('/robots.txt', seo.robotsTxt);
+app.get('/sitemap.xml', seo.sitemapXml);
+
 if (isProd) {
   app.use(express.static(DIST));
-  app.get('*', (_req, res) => res.sendFile(path.join(DIST, 'index.html')));
+  // Event pages get their own title, picture and description in the HTML so
+  // shared links preview properly on WhatsApp, Facebook and Google
+  app.get('*', seo.serveApp(DIST));
 } else {
   app.use((_req, res) => res.status(404).json({ message: 'Route not found' }));
 }

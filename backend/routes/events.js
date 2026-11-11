@@ -1,14 +1,19 @@
 const router = require('express').Router();
 const db = require('../db/store');
 const { authMiddleware, requireRole } = require('../middleware/auth');
+const { isUpcoming } = require('../services/seo');
 
 // GET /api/events — public, supports ?category=&city=&search=&featured=&page=&limit=
 router.get('/', (req, res) => {
   let list = db.getEvents();
-  const { category, city, search, featured, page, limit } = req.query;
+  const { category, city, search, featured, upcoming, page, limit } = req.query;
 
   // Hide events admin removed from homepage (unless fetching featured for hero)
   if (featured !== 'true') list = list.filter((e) => !e.hiddenFromHome);
+
+  // The public homepage asks for upcoming events only, so nothing that has
+  // already happened is offered for sale
+  if (upcoming === 'true') list = list.filter(isUpcoming);
 
   if (category && category !== 'All') list = list.filter((e) => e.category === category);
   if (city) list = list.filter((e) => e.city.toLowerCase() === city.toLowerCase());
@@ -24,8 +29,9 @@ router.get('/', (req, res) => {
     );
   }
 
-  // Sort by priority descending (higher priority appears first)
-  list.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+  // Sort by priority descending (higher priority appears first), then soonest first
+  list = [...list].sort((a, b) =>
+    (b.priority || 0) - (a.priority || 0) || String(a.date || '').localeCompare(String(b.date || '')));
 
   const total = list.length;
   if (page || limit) {

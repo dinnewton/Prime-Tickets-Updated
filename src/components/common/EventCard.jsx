@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Calendar, MapPin, Users } from 'lucide-react';
 
 const statusConfig = {
@@ -23,25 +23,26 @@ function formatDate(dateStr) {
 }
 
 function soldPercent(sold, total) {
-  return Math.min(Math.round((sold / total) * 100), 100);
+  if (!total) return 0;
+  return Math.min(Math.round(((sold || 0) / total) * 100), 100);
 }
 
 export default function EventCard({ event }) {
-  const navigate = useNavigate();
   const date = formatDate(event.date);
   const sold = soldPercent(event.soldTickets, event.totalTickets);
   const status = statusConfig[event.status] || statusConfig.on_sale;
 
   return (
-    <div
-      onClick={() => navigate(`/events/${event.id}`)}
-      className="card group cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+    <Link
+      to={`/events/${event.id}`}
+      className="card block group cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
     >
       {/* Image with floating date badge */}
       <div className="relative overflow-hidden h-48">
         <img
           src={event.image}
           alt={event.title}
+          loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
         {/* Dark gradient */}
@@ -82,12 +83,13 @@ export default function EventCard({ event }) {
           </div>
         </div>
 
-        {/* Tickets sold bar */}
+        {/* Tickets sold bar — only once sales have started; an empty bar puts buyers off */}
+        {sold > 0 && (
         <div className="mb-4">
           <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
             <span className="flex items-center gap-1">
               <Users className="w-3 h-3" />
-              {event.soldTickets.toLocaleString()} sold
+              {(event.soldTickets || 0).toLocaleString()} sold
             </span>
             <span>{sold}%</span>
           </div>
@@ -100,20 +102,21 @@ export default function EventCard({ event }) {
             />
           </div>
         </div>
+        )}
 
         {/* Price & CTA */}
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">From</p>
             <p className="text-2xl font-black text-gray-900">
-              Ksh {event.price.toLocaleString()}
+              Ksh {Number(event.price).toLocaleString()}
             </p>
           </div>
-          <button className="btn-primary !py-2.5 !px-5 !text-sm">
-            Get Tickets
-          </button>
+          <span className={`btn-primary !py-2.5 !px-5 !text-sm ${event.status === 'sold_out' ? '!bg-gray-300 !shadow-none' : ''}`}>
+            {event.status === 'sold_out' ? 'Sold Out' : 'Get Tickets'}
+          </span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

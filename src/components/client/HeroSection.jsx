@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, ChevronLeft, ChevronRight, Flame, ArrowRight } from 'lucide-react';
-import { getFeaturedEvents } from '../../data/events';
+import { useNavigate, Link } from 'react-router-dom';
+import { Calendar, MapPin, ChevronLeft, ChevronRight, Flame, ArrowRight, Smartphone, QrCode, ShieldCheck } from 'lucide-react';
 import { eventsApi } from '../../services/api';
 
 function formatDate(dateStr) {
@@ -13,31 +12,76 @@ function formatDate(dateStr) {
   });
 }
 
+/** Shown when no event is featured — introduces PrimeTickets itself. */
+function BrandHero() {
+  return (
+    <section className="relative w-full bg-hero-pattern overflow-hidden">
+      <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-accent-500/20 blur-3xl" aria-hidden="true" />
+      <div className="absolute -bottom-32 -left-24 w-96 h-96 rounded-full bg-primary-500/30 blur-3xl" aria-hidden="true" />
+
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+        <div className="max-w-3xl">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-accent-400 text-xs font-bold uppercase tracking-widest mb-5">
+            Event tickets in Kenya
+          </span>
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-5">
+            Your next great night out <span className="text-gradient">starts here.</span>
+          </h1>
+          <p className="text-white/80 text-lg leading-relaxed mb-8 max-w-2xl">
+            Concerts, sports, comedy, theatre and festivals. Pay with M-Pesa or card and your
+            QR ticket lands in your inbox in seconds.
+          </p>
+
+          <div className="flex items-center gap-3 flex-wrap mb-10">
+            <a href="#events" className="btn-primary !py-3.5 !px-8 !bg-accent-500 hover:!bg-accent-600 !shadow-accent-500/30 group">
+              Browse Events
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </a>
+            <Link to="/vendor/register" className="btn-secondary !py-3.5 !px-8 !bg-white/10 !text-white !border-white/30 hover:!bg-white/20">
+              Sell Tickets for Your Event
+            </Link>
+          </div>
+
+          <ul className="flex flex-wrap gap-x-8 gap-y-3 text-sm text-white/80">
+            <li className="flex items-center gap-2"><Smartphone className="w-4 h-4 text-accent-400" /> M-Pesa &amp; card</li>
+            <li className="flex items-center gap-2"><QrCode className="w-4 h-4 text-accent-400" /> Instant QR e-ticket</li>
+            <li className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-accent-400" /> Secure checkout by Paystack</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function HeroSection() {
-  const [featured, setFeatured] = useState(getFeaturedEvents());
+  // null while loading, so the brand hero doesn't flash before featured events arrive
+  const [featured, setFeatured] = useState(null);
   const [current, setCurrent] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
-    eventsApi.list({ featured: 'true' })
-      .then((data) => { if (data.length) setFeatured(data); })
-      .catch(() => {});
+    eventsApi.list({ featured: 'true', upcoming: 'true' })
+      .then((data) => setFeatured(Array.isArray(data) ? data : []))
+      .catch(() => setFeatured([]));
   }, []);
+
+  const count = featured?.length || 0;
 
   // Auto-advance every 5 seconds
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrent((c) => (c + 1) % featured.length);
-    }, 5000);
+    if (count < 2) return;
+    const timer = setInterval(() => setCurrent((c) => (c + 1) % count), 5000);
     return () => clearInterval(timer);
-  }, [featured.length]);
+  }, [count]);
 
-  const prev = () => setCurrent((c) => (c - 1 + featured.length) % featured.length);
-  const next = () => setCurrent((c) => (c + 1) % featured.length);
+  if (featured === null) {
+    return <section className="w-full h-[500px] sm:h-[560px] md:h-[640px] bg-hero-pattern" aria-busy="true" />;
+  }
+  if (!count) return <BrandHero />;
 
-  const event = featured[current];
-
-  if (!featured.length || !event) return null;
+  const prev = () => setCurrent((c) => (c - 1 + count) % count);
+  const next = () => setCurrent((c) => (c + 1) % count);
+  const event = featured[current % count];
 
   return (
     <section className="relative w-full h-[500px] sm:h-[560px] md:h-[640px] overflow-hidden">
@@ -52,6 +96,7 @@ export default function HeroSection() {
           <img
             src={e.image}
             alt={e.title}
+            loading={i === 0 ? 'eager' : 'lazy'}
             className="w-full h-full object-cover"
           />
         </div>
@@ -99,7 +144,7 @@ export default function HeroSection() {
           <div className="flex items-center gap-3 flex-wrap">
             <div>
               <p className="text-white/60 text-xs uppercase tracking-widest font-medium">Tickets from</p>
-              <p className="text-3xl sm:text-4xl font-black text-white">Ksh {event.price.toLocaleString()}</p>
+              <p className="text-3xl sm:text-4xl font-black text-white">Ksh {Number(event.price).toLocaleString()}</p>
             </div>
             <button
               onClick={() => navigate(`/events/${event.id}`)}
@@ -108,47 +153,49 @@ export default function HeroSection() {
               Get Tickets
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
-            <button
-              onClick={() => navigate(`/events/${event.id}`)}
-              className="hidden sm:flex btn-secondary !py-3.5 !px-8 !text-base !bg-white/10 !text-white !border-white/30 hover:!bg-white/20"
-            >
-              Learn More
-            </button>
           </div>
         </div>
 
         {/* Slide indicators */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1">
-          {featured.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrent(i)}
-              className="p-2"
-              aria-label={`Slide ${i + 1}`}
-            >
-              <span className={`block rounded-full transition-all duration-300 ${
-                i === current
-                  ? 'w-8 h-2.5 bg-accent-500'
-                  : 'w-2.5 h-2.5 bg-white/40 hover:bg-white/70'
-              }`} />
-            </button>
-          ))}
-        </div>
+        {count > 1 && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1">
+            {featured.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrent(i)}
+                className="p-2"
+                aria-label={`Slide ${i + 1}`}
+              >
+                <span className={`block rounded-full transition-all duration-300 ${
+                  i === current
+                    ? 'w-8 h-2.5 bg-accent-500'
+                    : 'w-2.5 h-2.5 bg-white/40 hover:bg-white/70'
+                }`} />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Arrow controls */}
-      <button
-        onClick={prev}
-        className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white flex items-center justify-center transition-all hover:scale-110"
-      >
-        <ChevronLeft className="w-6 h-6" />
-      </button>
-      <button
-        onClick={next}
-        className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white flex items-center justify-center transition-all hover:scale-110"
-      >
-        <ChevronRight className="w-6 h-6" />
-      </button>
+      {count > 1 && (
+        <>
+          <button
+            onClick={prev}
+            aria-label="Previous event"
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white flex items-center justify-center transition-all hover:scale-110"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <button
+            onClick={next}
+            aria-label="Next event"
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white flex items-center justify-center transition-all hover:scale-110"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+        </>
+      )}
     </section>
   );
 }

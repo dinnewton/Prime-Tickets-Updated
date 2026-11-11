@@ -1,24 +1,26 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { eventsApi } from '../services/api';
-import { events as fallbackEvents } from '../data/events';
 
 // The cart is persisted so it survives a refresh and the trip to Paystack
 const useEventStore = create(persist((set, get) => ({
-  events: fallbackEvents, // start with mock data so UI renders instantly
-  loading: false,
+  events: [],
+  loading: true, // true until the first fetch settles, so pages can show placeholders
   cart: [],
   selectedCategory: 'All',
   searchQuery: '',
 
-  /** Fetch events from the backend and replace local state */
-  fetchEvents: async () => {
+  /**
+   * Fetch events from the backend and replace local state.
+   * The public homepage passes { upcoming: 'true' }; dashboards fetch everything.
+   */
+  fetchEvents: async (params = {}) => {
     set({ loading: true });
     try {
-      const data = await eventsApi.list();
+      const data = await eventsApi.list(params);
       set({ events: data, loading: false });
     } catch {
-      // Keep fallback data if API is unreachable
+      // Keep whatever is already shown if the API is unreachable
       set({ loading: false });
     }
   },
@@ -32,9 +34,7 @@ const useEventStore = create(persist((set, get) => ({
       const matchCat = selectedCategory === 'All' || e.category === selectedCategory;
       const matchSearch =
         !searchQuery ||
-        e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        e.venue.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        e.city.toLowerCase().includes(searchQuery.toLowerCase());
+        [e.title, e.venue, e.city].some((v) => (v || '').toLowerCase().includes(searchQuery.toLowerCase()));
       return matchCat && matchSearch;
     });
   },
