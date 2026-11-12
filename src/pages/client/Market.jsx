@@ -52,7 +52,7 @@ export default function Market() {
     l.venue?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const fmt = (d) => new Date(d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' });
+  const fmt = (d) => new Date(d).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' });
 
   return (
     <div className="min-h-screen flex flex-col">

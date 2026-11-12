@@ -280,7 +280,7 @@ export default function MyTickets() {
 }
 
 function BookingCard({ booking, onTransfer, onSell, onCancelListing, onShowQR, readOnly }) {
-  const fmt = (d) => new Date(d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' });
+  const fmt = (d) => new Date(d).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' });
   const isUpcoming = booking.eventDate && new Date(booking.eventDate) >= new Date();
 
   return (

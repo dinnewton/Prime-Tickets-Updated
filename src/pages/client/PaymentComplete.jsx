@@ -43,6 +43,13 @@ export default function PaymentComplete() {
           setMessage(res.message || 'The payment did not go through. No money was taken.');
           return;
         }
+        if (res.status === 'refund_due') {
+          sessionStorage.removeItem('pt-pending-payment');
+          sessionStorage.removeItem('pt-payment-key');
+          setState('refund');
+          setMessage(`${res.message || 'Your payment was received but the tickets are no longer available. We will refund you in full.'} Your reference is ${res.orderRef}.`);
+          return;
+        }
         if (res.status === 'underpaid') {
           setState('failed');
           setMessage(res.message || 'The amount paid was less than the ticket price. Please contact support.');
@@ -90,6 +97,20 @@ export default function PaymentComplete() {
               <div className="flex gap-3 justify-center">
                 <Link to="/checkout" className="btn-primary">Try again</Link>
                 <Link to="/my-tickets" className="btn-outline">My Tickets</Link>
+              </div>
+            </>
+          )}
+
+          {state === 'refund' && (
+            <>
+              <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <AlertCircle className="w-12 h-12 text-amber-500" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Tickets no longer available</h1>
+              <p className="text-gray-500 mb-8">{message}</p>
+              <div className="flex gap-3 justify-center">
+                <Link to="/events" className="btn-primary">Browse events</Link>
+                <Link to="/help" className="btn-outline">Get help</Link>
               </div>
             </>
           )}

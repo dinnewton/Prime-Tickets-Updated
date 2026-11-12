@@ -121,7 +121,7 @@ export default function AdminEvents() {
                 <td className="px-4 py-4 text-sm text-gray-600 hidden md:table-cell">
                   <div className="flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                    {new Date(event.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {new Date(event.date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </div>
                 </td>
                 <td className="px-4 py-4 hidden lg:table-cell">

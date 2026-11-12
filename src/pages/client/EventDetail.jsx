@@ -13,7 +13,7 @@ import { networkApi, eventsApi } from '../../services/api';
 import usePageTitle from '../../hooks/usePageTitle';
 
 function formatDate(dateStr) {
-  return new Date(dateStr).toLocaleDateString('en-ZA', {
+  return new Date(dateStr).toLocaleDateString('en-KE', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',

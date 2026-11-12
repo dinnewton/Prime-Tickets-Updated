@@ -8,14 +8,58 @@ const { SITE_URL } = require('../services/notifications');
 
 const SERVICE_FEE_RATE = 0.05;   // shown to the customer as "service fee (5%)"
 const MAX_PER_TICKET_TYPE = 10;
+const HOLD_MS = 15 * 60 * 1000;  // how long an unfinished payment keeps its tickets reserved
 const NOT_ON_SALE = ['cancelled', 'suspended', 'draft', 'ended', 'sold_out', 'paused'];
+
+/**
+ * Tickets for an event that other buyers are in the middle of paying for.
+ * They are held for HOLD_MS so two people cannot both pay for the last one.
+ * The buyer's own unfinished attempts are not counted, so they can retry.
+ */
+function heldTickets(eventId, buyer = {}) {
+  const since = Date.now() - HOLD_MS;
+  const email = String(buyer.email || '').toLowerCase();
+  return db.getAllPayments().reduce((sum, p) => {
+    if (p.status !== 'pending' || p.type === 'resale') return sum;
+    if (new Date(p.createdAt).getTime() < since) return sum;
+    if (buyer.userId && p.userId === buyer.userId) return sum;
+    if (email && String(p.customerEmail || '').toLowerCase() === email) return sum;
+    return sum + (p.cart || []).reduce((n, i) => n + (i.eventId === eventId ? i.quantity : 0), 0);
+  }, 0);
+}
+
+/**
+ * The money arrived but the tickets cannot be issued (sold to someone else
+ * in the meantime). No ticket is created; the payment is flagged so the
+ * admin refunds it from the Paystack dashboard.
+ */
+function markRefundDue(payment, { paymentRef, channel, io }, reason) {
+  const updated = db.updatePayment(payment.reference, {
+    status: 'refund_due',
+    refundReason: reason,
+    paymentRef,
+    channel,
+    paidAt: new Date().toISOString(),
+  });
+  const notif = db.createNotification({
+    type: 'refund_due',
+    title: 'Refund needed',
+    message: `${payment.customerName} paid Ksh ${Number(payment.amount).toLocaleString()} (${payment.orderRef}) but no ticket was issued: ${reason}. Refund this payment in Paystack.`,
+    meta: { orderRef: payment.orderRef, amount: payment.amount },
+  });
+  if (io) io.to('admin-room').emit('admin:notification', notif);
+  console.error(`[Payments] REFUND DUE ${payment.orderRef} (${paymentRef}) Ksh ${payment.amount} — ${reason}`);
+  return updated;
+}
 
 /**
  * Price the cart from the database — never from the browser, or a customer
  * could edit the request and pay Ksh 1. Throws with a customer-safe message.
  */
-function priceCart(rawCart) {
+function priceCart(rawCart, buyer = {}) {
   if (!Array.isArray(rawCart) || rawCart.length === 0) throw new Error('Your cart is empty');
+
+  const wanted = {}; // tickets asked for per event, across regular and VIP lines
 
   const items = rawCart.map((line) => {
     const event = db.getEventById(line.eventId);
@@ -33,9 +77,16 @@ function priceCart(rawCart) {
     const price = ticketType === 'vip' ? (event.vipPrice ?? event.price) : event.price;
     if (!(price > 0)) throw new Error(`${event.title} has no price set for ${ticketType} tickets`);
 
-    const left = (event.totalTickets ?? 0) - (event.soldTickets ?? 0);
-    if (event.totalTickets != null && quantity > left) {
-      throw new Error(left > 0 ? `Only ${left} ticket${left === 1 ? '' : 's'} left for ${event.title}` : `${event.title} is sold out`);
+    wanted[event.id] = (wanted[event.id] || 0) + quantity;
+    if (event.totalTickets != null) {
+      const unsold = event.totalTickets - (event.soldTickets ?? 0);
+      const left = unsold - heldTickets(event.id, buyer);
+      if (wanted[event.id] > left) {
+        if (left > 0) throw new Error(`Only ${left} ticket${left === 1 ? '' : 's'} left for ${event.title}`);
+        throw new Error(unsold > 0
+          ? `The last tickets for ${event.title} are being paid for right now. Please try again in a few minutes.`
+          : `${event.title} is sold out`);
+      }
     }
 
     return {
@@ -61,8 +112,31 @@ function priceCart(rawCart) {
  * Safe to call more than once: the webhook and the customer's return both
  * land here, and only the first call does the work.
  */
-function fulfilPayment(payment, { paymentRef, channel, io }) {
-  if (payment.status === 'success') return db.getPayment(payment.reference);
+function fulfilPayment(stalePayment, { paymentRef, channel, io }) {
+  // Always work from the stored record: the caller may have looked the
+  // payment up before waiting on Paystack, and the webhook may have
+  // fulfilled it in the meantime. Without this, tickets are issued twice.
+  const payment = db.getPayment(stalePayment.reference) || stalePayment;
+  if (payment.status === 'success' || payment.status === 'refund_due') return payment;
+
+  const isResale = payment.type === 'resale';
+
+  if (isResale) {
+    const listing = payment.listingId && db.getListingById(payment.listingId);
+    if (!listing || listing.status !== 'active') {
+      return markRefundDue(payment, { paymentRef, channel, io }, 'the resale ticket was already sold or withdrawn');
+    }
+  } else {
+    // Paid after the hold ran out and the tickets went to someone else
+    const needed = {};
+    payment.cart.forEach((i) => { needed[i.eventId] = (needed[i.eventId] || 0) + i.quantity; });
+    for (const [eventId, quantity] of Object.entries(needed)) {
+      const event = db.getEventById(eventId);
+      if (event && event.totalTickets != null && quantity > event.totalTickets - (event.soldTickets ?? 0)) {
+        return markRefundDue(payment, { paymentRef, channel, io }, `${event.title} sold out before the payment arrived`);
+      }
+    }
+  }
 
   db.updatePayment(payment.reference, {
     status: 'success',
@@ -73,7 +147,9 @@ function fulfilPayment(payment, { paymentRef, channel, io }) {
 
   const created = [];
 
-  payment.cart.forEach((item) => {
+  // A resale moves an existing ticket: it is not a new sale for the event
+  // or the organiser, so it is handled separately below
+  if (!isResale) payment.cart.forEach((item) => {
     created.push(db.createBooking({
       userId: payment.userId || 'guest',
       eventId: item.eventId,
@@ -103,30 +179,28 @@ function fulfilPayment(payment, { paymentRef, channel, io }) {
   });
 
   // Resale purchase: the seller's ticket is retired and a fresh one issued
-  if (payment.type === 'resale' && payment.listingId) {
+  if (isResale) {
     const listing = db.getListingById(payment.listingId);
-    if (listing && listing.status === 'active') {
-      db.updateBooking(listing.bookingId, { status: 'sold', soldTo: payment.userId });
-      created.push(db.createBooking({
-        userId: payment.userId,
-        eventId: listing.eventId,
-        eventTitle: listing.eventTitle,
-        eventDate: listing.eventDate,
-        eventTime: listing.eventTime,
-        venue: listing.venue,
-        image: listing.image,
-        ticketType: listing.ticketType,
-        quantity: listing.quantity,
-        unitPrice: listing.askingPrice,
-        totalPrice: listing.askingPrice,
-        paymentRef,
-        orderRef: payment.orderRef,
-        customerName: payment.customerName,
-        customerEmail: payment.customerEmail,
-        purchasedViaResale: true,
-      }));
-      db.updateListing(listing.id, { status: 'sold', soldTo: payment.userId, soldAt: new Date().toISOString() });
-    }
+    db.updateBooking(listing.bookingId, { status: 'sold', soldTo: payment.userId });
+    created.push(db.createBooking({
+      userId: payment.userId,
+      eventId: listing.eventId,
+      eventTitle: listing.eventTitle,
+      eventDate: listing.eventDate,
+      eventTime: listing.eventTime,
+      venue: listing.venue,
+      image: listing.image,
+      ticketType: listing.ticketType,
+      quantity: listing.quantity,
+      unitPrice: listing.askingPrice,
+      totalPrice: listing.askingPrice,
+      paymentRef,
+      orderRef: payment.orderRef,
+      customerName: payment.customerName,
+      customerEmail: payment.customerEmail,
+      purchasedViaResale: true,
+    }));
+    db.updateListing(listing.id, { status: 'sold', soldTo: payment.userId, soldAt: new Date().toISOString() });
   }
 
   if (io) {
@@ -172,7 +246,7 @@ router.post('/paystack/init', optionalAuth, async (req, res) => {
 
   let priced;
   try {
-    priced = priceCart(cart);
+    priced = priceCart(cart, { email, userId: req.user?.id });
   } catch (e) {
     return res.status(400).json({ message: e.message });
   }
@@ -252,6 +326,11 @@ router.post('/paystack/webhook', (req, res) => {
 
   // Guard against a tampered or partial payment
   const paid = Number(data.amount) / 100;
+  // Prices are in Kenya shillings: the same number in another currency is not full payment
+  if (data.currency && data.currency !== paystack.CURRENCY) {
+    db.updatePayment(payment.reference, { status: 'underpaid', paidAmount: paid, paidCurrency: data.currency });
+    return console.error(`[Paystack] ${payment.orderRef}: paid in ${data.currency}, expected ${paystack.CURRENCY}`);
+  }
   if (paid + 0.01 < Number(payment.amount)) {
     db.updatePayment(payment.reference, { status: 'underpaid', paidAmount: paid });
     return console.error(`[Paystack] ${payment.orderRef}: paid ${paid} but expected ${payment.amount}`);
@@ -301,16 +380,20 @@ router.get('/paystack/verify/:reference', optionalAuth, async (req, res) => {
     };
   };
 
+  const REFUND_MESSAGE = 'Your payment was received, but the tickets were sold to someone else just before it arrived. We will refund you in full.';
   if (payment.status === 'success') return res.json(summary());
+  if (payment.status === 'refund_due') return res.json({ ...summary(), message: REFUND_MESSAGE });
 
   try {
     const tx = await paystack.verifyTransaction(payment.reference);
     if (tx.status === 'success') {
-      if (tx.amount + 0.01 < Number(payment.amount)) {
-        db.updatePayment(payment.reference, { status: 'underpaid', paidAmount: tx.amount });
+      const wrongCurrency = !!tx.currency && tx.currency !== paystack.CURRENCY;
+      if (wrongCurrency || tx.amount + 0.01 < Number(payment.amount)) {
+        db.updatePayment(payment.reference, { status: 'underpaid', paidAmount: tx.amount, paidCurrency: tx.currency });
         return res.json({ ...summary(), message: 'The amount paid was less than the ticket price. Please contact support.' });
       }
-      fulfilPayment(payment, { paymentRef: tx.reference, channel: tx.channel, io: req.app.get('io') });
+      const done = fulfilPayment(payment, { paymentRef: tx.reference, channel: tx.channel, io: req.app.get('io') });
+      if (done.status === 'refund_due') return res.json({ ...summary(), message: REFUND_MESSAGE });
     } else if (['failed', 'abandoned', 'reversed'].includes(tx.status)) {
       db.updatePayment(payment.reference, { status: 'failed', failureReason: tx.gatewayResponse });
     }

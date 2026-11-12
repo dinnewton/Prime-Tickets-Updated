@@ -57,7 +57,7 @@ export default function VendorEvents() {
                 <div className="p-4">
                   <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
                     <Calendar className="w-3.5 h-3.5" />
-                    {new Date(event.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {new Date(event.date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
                     <span>·</span>
                     <span>{event.venue}</span>
                   </div>

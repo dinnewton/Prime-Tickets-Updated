@@ -4,7 +4,7 @@ import { Calendar, MapPin, ChevronLeft, ChevronRight, Flame, ArrowRight, Smartph
 import { eventsApi } from '../../services/api';
 
 function formatDate(dateStr) {
-  return new Date(dateStr).toLocaleDateString('en-ZA', {
+  return new Date(dateStr).toLocaleDateString('en-KE', {
     weekday: 'short',
     day: 'numeric',
     month: 'long',

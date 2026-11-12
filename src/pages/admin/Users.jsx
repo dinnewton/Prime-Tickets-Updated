@@ -76,7 +76,7 @@ export default function AdminUsers() {
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900 text-sm">{user.name}</p>
-                      <p className="text-xs text-gray-500">Joined {new Date(user.joinedDate).toLocaleDateString('en-ZA', { month: 'short', year: 'numeric' })}</p>
+                      <p className="text-xs text-gray-500">Joined {new Date(user.joinedDate).toLocaleDateString('en-KE', { month: 'short', year: 'numeric' })}</p>
                     </div>
                   </div>
                 </td>
@@ -156,7 +156,7 @@ export default function AdminUsers() {
                 { label: 'Phone', value: viewUser.phone },
                 { label: 'Tickets purchased', value: viewUser.ticketsPurchased },
                 { label: 'Total spent', value: `Ksh ${viewUser.totalSpent.toLocaleString()}` },
-                { label: 'Member since', value: new Date(viewUser.joinedDate).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' }) },
+                { label: 'Member since', value: new Date(viewUser.joinedDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'long', year: 'numeric' }) },
               ].map(({ label, value }) => (
                 <div key={label} className="flex justify-between">
                   <span className="text-gray-500">{label}</span>

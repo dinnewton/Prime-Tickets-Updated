@@ -82,7 +82,7 @@ export default function CreateEvent() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">City</label>
-                <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="input-field" placeholder="Johannesburg" />
+                <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="input-field" placeholder="Nairobi" />
               </div>
             </div>
             <div>

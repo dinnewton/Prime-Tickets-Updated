@@ -97,6 +97,16 @@ router.post('/:id/buy', authMiddleware, async (req, res) => {
   if (listing.status !== 'active') return res.status(400).json({ message: 'This ticket is no longer available' });
   if (listing.sellerId === req.user.id) return res.status(400).json({ message: 'You cannot buy your own listing' });
 
+  // One buyer at a time: while someone else is paying for this ticket,
+  // nobody else is sent to pay for it
+  const since = Date.now() - 15 * 60 * 1000;
+  const beingBought = db.getAllPayments().some((p) =>
+    p.type === 'resale' && p.listingId === listing.id && p.status === 'pending' &&
+    p.userId !== req.user.id && new Date(p.createdAt).getTime() >= since);
+  if (beingBought) {
+    return res.status(409).json({ message: 'Someone else is paying for this ticket right now. Please try again in a few minutes.' });
+  }
+
   // Price comes from the listing in the database, never from the browser
   const amount = listing.askingPrice;
   const reference = `PTR${Date.now().toString().slice(-7)}${Math.random().toString(36).slice(2, 5).toUpperCase()}`;

@@ -10,10 +10,10 @@ const statusConfig = {
 function formatDate(dateStr) {
   const date = new Date(dateStr);
   return {
-    day: date.toLocaleDateString('en-ZA', { day: '2-digit' }),
-    month: date.toLocaleDateString('en-ZA', { month: 'short' }).toUpperCase(),
+    day: date.toLocaleDateString('en-KE', { day: '2-digit' }),
+    month: date.toLocaleDateString('en-KE', { month: 'short' }).toUpperCase(),
     year: date.getFullYear(),
-    full: date.toLocaleDateString('en-ZA', {
+    full: date.toLocaleDateString('en-KE', {
       weekday: 'short',
       day: 'numeric',
       month: 'long',
